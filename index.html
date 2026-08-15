@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>قصر المشويات | المنيو</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <aside class="sidebar-drawer" id="sidebarDrawer">
+    <div class="drawer-header">
+      <div class="drawer-title">
+        <span>🍽️</span>
+        <h3>أقسام المنيو</h3>
+      </div>
+      <button class="close-drawer-btn" id="closeDrawerBtn">✕</button>
+    </div>
+    <div class="drawer-categories" id="drawerCategories"></div>
+  </aside>
+
+  <header class="app-header">
+    <div class="header-main">
+      <button class="mobile-menu-btn" id="openDrawerBtn" aria-label="القائمة">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <div class="brand">
+        <span class="brand-badge">🔥 المشويات ع أصولها</span>
+        <h1>قصر المشويات</h1>
+      </div>
+      <a href="tel:19555" class="call-btn">
+        <span>📞</span>
+        <b>19555</b>
+      </a>
+    </div>
+
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="بتدور على أكلة إيه؟" autocomplete="off" />
+    </div>
+
+    <nav class="desktop-categories" id="desktopCategories"></nav>
+  </header>
+
+  <main class="menu-container" id="menuContainer"></main>
+
+  <footer class="app-footer">
+    <div class="footer-box">
+      <p>قصر المشويات • بالهنا والشفا ❤️</p>
+      <small>الأسعار شاملة الضريبة الرسمية</small>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
