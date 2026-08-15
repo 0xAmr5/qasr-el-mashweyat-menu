@@ -185,8 +185,7 @@ const menuData = [
     name: "حواوشي بلدي على الفحم",
     price: "85 ج.م",
     description: "رغيف حواوشي لحم بلدي متبل بالبصل والفلفل ومشوي على الفحم مقرمش.",
-    image: "./hawawshi-baladi.jpg",
-    tag: "الأعلى طلباً"
+    image: "./hawawshi-baladi.jpg"
   },
   {
     id: 24,
@@ -210,8 +209,7 @@ const menuData = [
     name: "فطير مشلتت بلدي بالسمن الفلاحي",
     price: "145 ج.م",
     description: "فطيرة مشلتتة مورقة ومخبوزة بالسمن البلدي الفلاحي تقدم مع عسل وجبنة قديمة.",
-    image: "./feteer-meshaltet.jpg",
-    tag: "فلاحي أصلي 🥞"
+    image: "./feteer-meshaltet.jpg"
   },
   {
     id: 27,
@@ -307,8 +305,7 @@ const menuData = [
     name: "أم علي بالقشطة والمكسرات",
     price: "75 ج.م",
     description: "رقائق الملفيه بالحليب الساخن والمكسرات المحمصة مع طبقة قشطة بلدي محمرة.",
-    image: "./om-ali-dessert.jpg",
-    tag: "حلو مميز 🍮"
+    image: "./om-ali-dessert.jpg"
   },
   {
     id: 39,
@@ -348,8 +345,7 @@ const menuData = [
     name: "عصير ليمون بالنعناع فريش",
     price: "40 ج.م",
     description: "عصير ليمون طازج مثلج ومخفوق بأوراق النعناع الأخضر المنعش.",
-    image: "./lemon-mint-juice.jpg",
-    tag: "منعش ❄️"
+    image: "./lemon-mint-juice.jpg"
   },
   {
     id: 44,

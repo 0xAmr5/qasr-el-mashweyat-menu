@@ -64,7 +64,14 @@ body {
 .drawer-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.drawer-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .drawer-title h3 {
@@ -153,21 +160,21 @@ body {
 
 .brand {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.brand-badge {
-  display: inline-block;
-  background: #fff7ed;
-  color: #ea580c;
-  font-size: 0.68rem;
-  font-weight: 800;
-  padding: 2px 8px;
-  border-radius: 20px;
-  margin-bottom: 2px;
+.restaurant-logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 4px;
 }
 
 .brand h1 {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 900;
   color: var(--text-dark);
   line-height: 1.1;
@@ -350,7 +357,6 @@ body {
   margin-top: 4px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
-  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
