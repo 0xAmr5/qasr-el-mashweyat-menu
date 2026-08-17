@@ -1,63 +1,213 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>قصر المشويات | المنيو</title>
-  <!-- Favicon اللوجو في تاب المتصفح -->
+  <title>قصر المشويات | التجربة الرقمية الفاخرة</title>
   <link rel="icon" type="image/svg+xml" href="./logo.svg" />
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
+  <!-- Ambient Glow Background -->
+  <div class="ambient-glow glow-top"></div>
+  <div class="ambient-glow glow-bottom"></div>
+
+  <!-- Sidebar Overlay & Drawer for Mobile -->
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <aside class="sidebar-drawer" id="sidebarDrawer">
     <div class="drawer-header">
-      <div class="drawer-title">
-        <img src="./logo.svg" alt="لوجو قصر المشويات" class="drawer-logo" width="32" height="32" />
-        <h3>أقسام المنيو</h3>
+      <div class="drawer-brand">
+        <img src="./logo.svg" alt="لوجو قصر المشويات" class="drawer-logo" />
+        <div>
+          <h3>أقسام المنيو</h3>
+          <small>اختر ما تشتهي 👑</small>
+        </div>
       </div>
-      <button class="close-drawer-btn" id="closeDrawerBtn">✕</button>
+      <button class="close-drawer-btn" id="closeDrawerBtn" aria-label="إغلاق القائمة">✕</button>
     </div>
     <div class="drawer-categories" id="drawerCategories"></div>
   </aside>
 
+  <!-- Header -->
   <header class="app-header">
     <div class="header-main">
-      <button class="mobile-menu-btn" id="openDrawerBtn" aria-label="القائمة">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-      <div class="brand">
-        <img src="./logo.svg" alt="لوجو قصر المشويات" class="restaurant-logo" width="46" height="46" />
-        <h1>قصر المشويات</h1>
+      <div class="header-right-group">
+        <!-- 3 Bars Hamburger Menu Button for Mobile -->
+        <button class="mobile-menu-btn" id="openDrawerBtn" aria-label="فتح القائمة">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="brand-zone">
+          <div class="brand-logo-frame">
+            <img src="./logo.svg" alt="قصر المشويات" class="restaurant-logo" />
+          </div>
+          <div>
+            <div class="brand-title-row">
+              <h1>قصر المشويات</h1>
+              <span class="badge-vip">ROYAL</span>
+            </div>
+            <p class="brand-subtitle"><span class="live-dot"></span> استلام طلبات وتوصيل فوري</p>
+          </div>
+        </div>
       </div>
-      <a href="tel:19555" class="call-btn">
-        <span>📞</span>
-        <b>19555</b>
-      </a>
+      
+      <div class="header-actions">
+        <!-- Theme Toggle Button -->
+        <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="تبديل المظهر" title="تبديل الوضع">
+          <span class="theme-icon" id="themeIcon">🌙</span>
+        </button>
+        <!-- Call Button -->
+        <a href="tel:19555" class="header-btn-call" title="اتصال بالخط الساخن">
+          <span>📞</span>
+          <b>19555</b>
+        </a>
+      </div>
     </div>
 
-    <div class="search-wrap">
+    <!-- Search Bar -->
+    <div class="search-container">
       <span class="search-icon">🔍</span>
-      <input type="text" id="searchInput" placeholder="بتدور على أكلة إيه؟" autocomplete="off" />
+      <input type="text" id="searchInput" placeholder="ابحث عن أكلتك المفضلة، مشويات، طواجن، حلويات..." autocomplete="off" />
+      <button class="clear-search-btn" id="clearSearchBtn">✕</button>
     </div>
 
-    <nav class="desktop-categories" id="desktopCategories"></nav>
+    <!-- Categories Stories / Pills Slider -->
+    <div class="categories-wrapper" id="categoriesWrapper"></div>
   </header>
 
-  <main class="menu-container" id="menuContainer"></main>
+  <!-- Special Hero Promo Banner -->
+  <div class="featured-banner-wrap">
+    <div class="featured-banner">
+      <div class="banner-badge">👑 التميز والأصالة</div>
+      <h2>طعم اللحم البلدي الطازج على أصوله 🔥</h2>
+      <p>خدمة التوصيل السريع متاحة لأي مكان • اطلب وتابع طلبك فوراً</p>
+    </div>
+  </div>
 
+  <!-- Menu Feed Container -->
+  <main class="menu-grid-feed" id="menuGridFeed"></main>
+
+  <!-- Floating Checkout Bar -->
+  <div class="floating-checkout-bar" id="floatingBar">
+    <div class="floating-info">
+      <div class="floating-badge" id="floatingCount">0</div>
+      <div>
+        <span class="floating-label">إجمالي الحساب:</span>
+        <h4 class="floating-price" id="floatingTotalPrice">0 ج.م</h4>
+      </div>
+    </div>
+    <button class="floating-btn" id="openCartBtn">
+      <span>عرض الفاتورة والطلب</span>
+      <span class="floating-btn-icon">⚡</span>
+    </button>
+  </div>
+
+  <!-- Checkout Drawer Modal -->
+  <div class="checkout-modal-overlay" id="checkoutModal">
+    <div class="checkout-modal-sheet">
+      <div class="sheet-drag-pill"></div>
+      <div class="sheet-header">
+        <div class="sheet-title-zone">
+          <span class="sheet-icon">🛒</span>
+          <div>
+            <h3>فاتورة وتأكيد الطلب</h3>
+            <small>اكتب بيانات التوصيل وأرسل الطلب فوراً</small>
+          </div>
+        </div>
+        <button class="close-sheet-btn" id="closeCartBtn">✕</button>
+      </div>
+
+      <!-- Scrollable Container -->
+      <div class="sheet-body-scroll">
+        <div class="section-label">الأصناف المختارة:</div>
+        <div class="sheet-items-scroll" id="sheetItemsContainer"></div>
+
+        <!-- Customer Info -->
+        <div class="customer-form-wrap">
+          <div class="section-label">بيانات التوصيل والتواصل:</div>
+          
+          <div class="input-field">
+            <label for="custName">الاسم بالكامل <span class="req">*</span></label>
+            <input type="text" id="custName" placeholder="اكتب اسمك الكريم" required />
+          </div>
+
+          <div class="input-field">
+            <label for="custPhone">رقم الموبايل للتواصل <span class="req">*</span></label>
+            <input type="tel" id="custPhone" placeholder="مثال: 01009694831" required />
+          </div>
+
+          <div class="input-field">
+            <label for="custAddress">العنوان بالتفصيل <span class="req">*</span></label>
+            <textarea id="custAddress" rows="2" placeholder="المنطقة، اسم الشارع، رقم العمارة، الدور، الشقة، علامة مميزة..." required></textarea>
+          </div>
+
+          <div class="input-field">
+            <label for="custNotes">ملاحظات إضافية (اختياري)</label>
+            <input type="text" id="custNotes" placeholder="مثال: شطة زيادة، سلطات إضافية..." />
+          </div>
+        </div>
+      </div>
+
+      <!-- Sheet Footer -->
+      <div class="sheet-footer">
+        <div class="sheet-summary-box">
+          <div class="summary-line">
+            <span>عدد الأصناف:</span>
+            <b id="summaryCount">0</b>
+          </div>
+          <div class="summary-line total-line">
+            <span>المجموع النهائي:</span>
+            <b id="summaryTotal">0 ج.م</b>
+          </div>
+        </div>
+
+        <button class="whatsapp-checkout-btn" id="sendWhatsappBtn">
+          <span>إرسال الطلب عبر واتساب</span>
+          <span class="wa-icon">💬</span>
+        </button>
+
+        <a href="tel:19555" class="phone-checkout-btn">
+          <span>أو اطلب عبر الخط الساخن 19555</span>
+          <span>📞</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dish Detail Modal -->
+  <div class="dish-detail-modal" id="dishModal">
+    <div class="dish-detail-card">
+      <button class="close-detail-btn" id="closeDishModalBtn">✕</button>
+      <div class="detail-img-box">
+        <img src="" id="dishModalImg" alt="" />
+        <span class="detail-tag" id="dishModalTag"></span>
+      </div>
+      <div class="detail-body">
+        <div class="detail-head">
+          <h2 id="dishModalTitle"></h2>
+          <span class="detail-price" id="dishModalPrice"></span>
+        </div>
+        <p class="detail-desc" id="dishModalDesc"></p>
+        <button class="detail-add-btn" id="dishModalAddBtn">
+          <span>إضافة إلى طلبي</span>
+          <span id="dishModalBtnPrice"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Footer -->
   <footer class="app-footer">
-    <div class="footer-box">
-      <p>قصر المشويات • بالهنا والشفا ❤️</p>
-      <small>الأسعار شاملة الضريبة الرسمية</small>
+    <div class="footer-card">
+      <p>قصر المشويات • بالهنا والشفا دائماً ❤️</p>
+      <small>الأسعار معتمدة وشاملة الضريبة • خدمة التوصيل متوفرة على مدار اليوم</small>
     </div>
   </footer>
 
