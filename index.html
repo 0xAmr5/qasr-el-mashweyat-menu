@@ -3,115 +3,243 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>قصر المشويات | قائمة الطعام</title>
+  <title id="pageTitle">قائمة الطعام</title>
   <link rel="icon" type="image/svg+xml" href="./logo.svg" />
-  
-  <!-- Font: Tajawal -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=4" />
 </head>
-<body>
+<body data-layout="modern">
 
-  <!-- Header -->
-  <header class="app-header">
-    <div class="header-top">
-      <div class="brand-info">
-        <img src="./logo.svg" alt="لوجو قصر المشويات" class="logo-img" onerror="this.onerror=null; this.src='./mixed-grill.jpg';" />
-        <div>
-          <h1>قصر المشويات</h1>
-          <p>طعم أصيل ومذاق مميز</p>
+  <div class="closed-alert-banner" id="closedBanner" style="display:none;">
+    ⚠️ المطعم مغلق لاستقبال الطلبات حالياً — يمكنك تصفح المنيو فقط
+  </div>
+
+  <!-- 1. HERO COVER -->
+  <section class="hero-banner">
+    <img src="./mixed-grill.jpg" id="restCoverImg" alt="غلاف المطعم" class="hero-cover-img" onerror="this.onerror=null; this.src='./mixed-grill.jpg';" />
+    <div class="hero-gradient"></div>
+    <div class="hero-top-controls">
+      <button class="glass-btn" id="openInfoBtn">ℹ️ عن المطعم</button>
+      <div style="display:flex; gap:7px;">
+        <button class="glass-btn pulse-track" id="trackMyOrderBtn" style="display:none;">🧾 فاتورتي / متابعة الطلب</button>
+        <button class="glass-btn" id="themeToggleBtn"><span id="themeIcon">🌙</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. BRAND PROFILE CARD -->
+  <div class="brand-profile-wrapper">
+    <div class="brand-profile-card">
+      <div class="brand-card-main">
+        <div class="brand-logo-ring">
+          <img src="./logo.svg" id="restLogo" alt="شعار المطعم" onerror="this.onerror=null; this.src='./mixed-grill.jpg';" />
+        </div>
+        <div class="brand-titles">
+          <div class="title-status-row">
+            <h1 id="restName">قصر المشويات</h1>
+            <span class="status-pill open" id="restStatusPill">● مفتوح الآن</span>
+          </div>
+          <p id="restTagline">أصل المشويات والطواجن المصرية على الفحم</p>
         </div>
       </div>
-      <div class="header-actions">
-        <!-- زر تبديل الوضع (Dark / Light) -->
-        <button class="theme-toggle-btn" id="themeToggleBtn" title="تبديل الوضع" aria-label="تبديل الوضع">
-          <span id="themeIcon">🌙</span>
-        </button>
-        <a href="tel:19888" class="call-btn" title="اتصل بنا">
-          <span>19888</span>
-          <span>📞</span>
+
+      <div class="quick-contact-pills">
+        <a href="tel:19888" id="restHotlineLink" class="contact-pill primary-pill">
+          <span>📞</span><span id="restHotlineText">19888</span>
         </a>
+        <a href="#" target="_blank" id="restMapDirect" class="contact-pill">
+          <span>📍</span><span>الموقع</span>
+        </a>
+        <button type="button" class="contact-pill" id="openInfoBtn2">
+          <span>🕒</span><span>مواعيد العمل</span>
+        </button>
       </div>
     </div>
+  </div>
 
-    <!-- شريط البحث -->
-    <div class="search-box">
-      <input type="text" id="searchInput" placeholder="ابحث عن صنف أو وجبة..." autocomplete="off" />
-      <button id="clearSearchBtn" class="clear-btn" aria-label="مسح البحث">✕</button>
+  <!-- 3. STICKY SEARCH & CATEGORIES -->
+  <header class="sticky-nav-header">
+    <div class="nav-inner">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="ابحث عن صنف أو وجبة..." autocomplete="off" />
+        <button id="clearSearchBtn" class="clear-btn">✕</button>
+      </div>
+      <nav class="categories-bar" id="categoriesBar"></nav>
     </div>
-
-    <!-- شريط الأقسام السريع -->
-    <nav class="categories-bar" id="categoriesBar"></nav>
   </header>
 
-  <!-- محتوى الأقسام والوجبات -->
-  <main class="menu-container" id="menuContainer"></main>
+  <!-- 4. FEATURED SLIDER -->
+  <section class="featured-section" id="featuredSection" style="display:none;">
+    <div class="section-header-row">
+      <h2>🔥 عروض والأكثر طلباً</h2>
+      <span class="section-sub">اختيارات مميزة</span>
+    </div>
+    <div class="featured-slider" id="featuredSlider"></div>
+  </section>
 
-  <!-- شريط السلة العائم -->
+  <!-- 5. MAIN MENU -->
+  <main class="menu-container" id="menuContainer">
+    <div class="loading-state">جاري تحضير المنيو...</div>
+  </main>
+
+  <!-- 6. FLOATING CART -->
   <aside class="floating-cart" id="floatingCart">
     <div class="cart-summary">
-      <span class="cart-badge" id="cartBadge">0</span>
+      <div class="cart-bag-icon">
+        <span>🛍️</span>
+        <span class="cart-badge" id="cartBadge">0</span>
+      </div>
       <div class="cart-text">
-        <span>الإجمالي:</span>
+        <span>إجمالي الأصناف</span>
         <strong id="cartTotal">0 ج.م</strong>
       </div>
     </div>
-    <button class="open-cart-btn" id="openCartBtn">عرض الطلب</button>
+    <button class="open-cart-btn" id="openCartBtn">مراجعة الطلب ←</button>
   </aside>
 
-  <!-- نافذة مراجعة وتأكيد الطلب (Checkout Modal) -->
+  <!-- 7. ITEM DETAIL MODAL -->
+  <div class="modal-overlay" id="itemDetailModal">
+    <div class="modal-sheet item-detail-sheet">
+      <button class="floating-close-btn" id="closeItemDetailBtn">✕</button>
+      <div class="detail-hero-img">
+        <img src="" id="detailImg" alt="" />
+        <span class="detail-badge" id="detailBadge" style="display:none;"></span>
+      </div>
+      <div class="detail-body">
+        <div class="detail-title-price">
+          <h3 id="detailName"></h3>
+          <strong id="detailPrice"></strong>
+        </div>
+        <p id="detailDesc"></p>
+        <div id="detailActions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. INFO MODAL -->
+  <div class="modal-overlay" id="infoModal">
+    <div class="modal-sheet">
+      <div class="sheet-header">
+        <h3 id="infoModalTitle">عن المطعم</h3>
+        <button class="close-btn" id="closeInfoBtn">✕</button>
+      </div>
+      <div class="sheet-content">
+        <p class="about-text" id="infoAbout"></p>
+        <div class="info-card-box">
+          <div class="info-row"><span>🕒</span><div><strong>مواعيد العمل</strong><p id="infoHours"></p></div></div>
+          <div class="info-row"><span>📍</span><div><strong>العنوان</strong><p id="infoAddress"></p><a href="#" target="_blank" id="infoMapLink" class="map-link-btn">افتح الخريطة ↗</a></div></div>
+          <div class="info-row"><span>📞</span><div><strong>الخط الساخن</strong><p><a href="#" id="infoPhoneLink" style="color:var(--color-primary); font-weight:800; text-decoration:none;"></a></p></div></div>
+        </div>
+        <div class="social-links-row" id="socialLinksRow"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. CHECKOUT MODAL -->
   <div class="modal-overlay" id="checkoutModal">
     <div class="modal-sheet">
       <div class="sheet-header">
-        <h3>تفاصيل الطلب</h3>
-        <button class="close-btn" id="closeCartBtn" aria-label="إغلاق النافذة">✕</button>
+        <h3>تأكيد الطلب</h3>
+        <button class="close-btn" id="closeCartBtn">✕</button>
       </div>
 
       <div class="sheet-content">
         <div class="selected-items" id="selectedItemsList"></div>
 
+        <div class="promo-row">
+          <input type="text" id="promoInput" placeholder="عندك كود خصم؟ اكتبه هنا" />
+          <button type="button" class="promo-apply-btn" id="applyPromoBtn">تطبيق</button>
+        </div>
+        <small id="promoMsg" style="font-size:0.72rem; font-weight:700; display:none;"></small>
+
+        <div class="order-type-switch">
+          <button type="button" class="type-btn active" id="typeDineinBtn">🍽️ داخل المطعم (صالة)</button>
+          <button type="button" class="type-btn" id="typeDeliveryBtn">🛵 توصيل دليفري</button>
+        </div>
+
         <form class="order-form" id="orderForm" onsubmit="event.preventDefault();">
-          <label>
-            الاسم
-            <input type="text" id="custName" placeholder="اكتب اسمك الكريم" required />
+          <label>الاسم الكريم *<input type="text" id="custName" placeholder="اكتب اسمك" required /></label>
+          <label>رقم الموبايل *<input type="tel" id="custPhone" placeholder="01xxxxxxxxx" required /></label>
+          
+          <label id="tableFieldLabel">اختر رقم الترابيزة *
+            <select id="custTableSelect"></select>
           </label>
-          <label>
-            رقم الموبايل
-            <input type="tel" id="custPhone" placeholder="01xxxxxxxxx" required />
+
+          <label id="addressFieldLabel" style="display:none;">العنوان بالتفصيل *
+            <input type="text" id="custAddress" placeholder="المنطقة، الشارع، العمارة، الشقة..." />
           </label>
-          <label>
-            العنوان بالتفصيل
-            <input type="text" id="custAddress" placeholder="المنطقة، الشارع، العمارة، الشقة..." required />
-          </label>
-          <label>
-            ملاحظات للطلب (اختياري)
-            <input type="text" id="custNotes" placeholder="أي إضافات أو تعديلات خاصة" />
-          </label>
+
+          <label>ملاحظات للطلب (اختياري)<input type="text" id="custNotes" placeholder="بدون بصل، زيادة طحينة..." /></label>
         </form>
       </div>
 
       <div class="sheet-footer">
-        <div class="total-row">
-          <span>الحساب الإجمالي:</span>
-          <strong id="finalTotal">0 ج.م</strong>
+        <div class="summary-lines">
+          <div class="summary-line"><span>مجموع الأصناف:</span><span id="subTotalText">0 ج.م</span></div>
+          <div class="summary-line" id="vatRow"><span>ضريبة القيمة المضافة (14%):</span><span id="vatText">0 ج.م</span></div>
+          <div class="summary-line" id="deliveryFeeRow" style="display:none;"><span>رسوم التوصيل:</span><span id="deliveryFeeText">0 ج.م</span></div>
+          <div class="summary-line" id="discountRow" style="display:none; color:#16a34a;"><span>الخصم:</span><span id="discountText">-0 ج.م</span></div>
+          <div class="summary-line grand"><span>الإجمالي النهائي:</span><strong id="finalTotal">0 ج.م</strong></div>
         </div>
-        <button class="btn-whatsapp" id="sendOrderBtn">إرسال الطلب عبر واتساب</button>
+        <button class="btn-submit-order" id="sendOrderBtn">تأكيد وإرسال الطلب الآن ✓</button>
       </div>
     </div>
   </div>
 
-  <!-- Toast Notification التفاعلي -->
-  <div class="toast-notification" id="toastNotification">
-    <span class="toast-icon">✓</span>
-    <span class="toast-text" id="toastText">تمت الإضافة للطلب</span>
+  <!-- 10. LIVE ORDER TRACKER & OPEN TAB BILL MODAL -->
+  <div class="modal-overlay" id="orderTrackerModal">
+    <div class="modal-sheet">
+      <div class="sheet-header">
+        <h3 id="trackerHeaderTitle">متابعة الطلب والفاتورة</h3>
+        <button class="close-btn" id="closeTrackerBtn">✕</button>
+      </div>
+      <div class="sheet-content">
+        <div class="tracker-box">
+          <div class="order-number-badge" id="trackerOrderNum">طلب #0000</div>
+          <h4 id="trackerStatusTitle" style="font-size:1.05rem; margin-bottom:4px;">تم استلام طلبك بنجاح!</h4>
+          <p id="trackerStatusDesc" style="font-size:0.78rem; color:var(--text-muted);"></p>
+
+          <!-- قسم الصالة (عداد تنازلي + حساب مفتوح) -->
+          <div id="dineinLiveSection" style="display:none;">
+            <div class="dinein-timer-circle">
+              <span style="font-size:0.74rem; color:var(--text-muted); font-weight:700; display:block;">الوقت المتبقي لنزول الطلب على الترابيزة</span>
+              <div class="timer-digits" id="countdownDigits">20:00</div>
+            </div>
+            <div class="open-tab-pill" id="openTabStatusBadge">🟢 حساب الترابيزة مفتوح (يمكنك طلب إضافات من الكاشير)</div>
+          </div>
+
+          <!-- قسم الدليفري (4 خطوات) -->
+          <div class="status-steps" id="deliveryStepsSection" style="display:none;">
+            <div class="step-item active" id="step-pending"><span>⏳</span>قيد المراجعة</div>
+            <div class="step-item" id="step-preparing"><span>👨‍🍳</span>يُحضّر الآن</div>
+            <div class="step-item" id="step-delivering"><span>🛵</span>في الطريق</div>
+            <div class="step-item" id="step-completed"><span>✅</span>تم التسليم</div>
+          </div>
+        </div>
+
+        <!-- تفاصيل الفاتورة المحدثة لايف (لو الكاشير ضاف مية أو سلطة بتظهر هنا فوراً) -->
+        <div class="receipt-bill-box" id="trackerOrderDetails"></div>
+
+        <!-- زرار حفظ الفاتورة PDF للعميل -->
+        <button type="button" class="btn-submit-order" id="customerPrintPdfBtn" style="background:var(--bg-element); color:var(--text-main); border:1px solid var(--border-subtle);">
+          📄 حفظ / طباعة الإيصال PDF على موبايلك
+        </button>
+      </div>
+    </div>
   </div>
 
-  <footer class="app-footer">
-    <p>قصر المشويات • خدمة التوصيل متوفرة يومياً</p>
-  </footer>
+  <div class="toast-notification" id="toastNotification">
+    <span>✓</span><span id="toastText">تمت الإضافة</span>
+  </div>
 
-  <script src="script.js"></script>
+  <footer class="app-footer"><p id="footerText">جميع الحقوق محفوظة</p></footer>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="script.js?v=4"></script>
 </body>
 </html>
