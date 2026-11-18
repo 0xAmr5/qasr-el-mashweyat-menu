@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>قصر المشويات | قائمة الطعام</title>
+  <link rel="icon" type="image/svg+xml" href="./logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=40" />
+</head>
+<body>
+
+  <!-- شريط الترابيزة (يظهر فقط عند مسح QR الترابيزة ?table=رقم) -->
+  <div class="table-mode-banner" id="tableModeBanner" style="display:none;">
+    <div class="table-banner-info">
+      <span class="table-dot"></span>
+      <strong id="tableBannerLabel">ترابيزة رقم 1</strong>
+    </div>
+    <button type="button" class="call-waiter-btn" id="callWaiterBtn">استدعاء الويتر</button>
+  </div>
+
+  <!-- غلاف المطعم -->
+  <header class="menu-hero-header">
+    <img id="restCoverImg" src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1400&q=85" alt="Cover" class="hero-cover-img" />
+    <div class="hero-cover-overlay"></div>
+
+    <div class="hero-top-actions">
+    <a href="HomePage/homepage.html" class="glass-pill-btn">الرئيسية</a>
+          <div style="display:flex; gap:8px; align-items:center;">
+        <!-- زر فاتورتي يظهر فقط في وضع الترابيزة -->
+        <button type="button" class="glass-pill-btn track-pill" id="trackMyOrderBtn" style="display:none;">فاتورتي الحالية</button>
+        <button type="button" class="theme-circle-btn" id="themeToggleBtn" aria-label="تغيير المظهر">
+          <span id="themeIcon">☀️</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="restaurant-identity-card">
+      <img id="restLogo" src="./logo.svg" alt="Logo" class="rest-logo-img" />
+      <div class="rest-identity-text">
+        <div class="rest-title-row">
+          <h1 id="restName">قصر المشويات</h1>
+          <span class="status-badge-pill" id="storeStatusPill">● مفتوح الآن</span>
+        </div>
+        <p id="restTagline" class="rest-tagline">مشويات على الفحم وطواجن مصرية أصيلة</p>
+        <div class="rest-quick-pills">
+          <button type="button" class="mini-pill" id="openInfoBtn">عن المطعم</button>
+          <a href="#" target="_blank" class="mini-pill" id="mapLinkPill">الموقع على الخريطة</a>
+          <a href="tel:19842" class="mini-pill" id="hotlinePill">الخط الساخن: 19842</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- البحث والأقسام -->
+  <div class="sticky-filter-bar">
+    <div class="search-box-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="ابحث بالاسم أو المكونات (ميكس جريل، شاورما، ورق عنب، كشري...)" />
+      <button type="button" id="clearSearchBtn" style="display:none;">✕</button>
+    </div>
+    <div class="categories-scroll-bar" id="categoriesBar"></div>
+  </div>
+
+  <!-- الأكثر طلباً -->
+  <section class="featured-wrap" id="featuredSection" style="display:none;">
+    <h2 class="section-sub-title">الأكثر طلباً في المطعم</h2>
+    <div class="featured-horizontal-scroll" id="featuredSlider"></div>
+  </section>
+
+  <!-- قائمة الطعام -->
+  <main class="menu-sections-wrap" id="menuContainer">
+    <div class="loading-state">جاري تحميل قائمة الطعام...</div>
+  </main>
+
+  <footer class="menu-footer">
+    <p>جميع الحقوق محفوظة &copy; 2026</p>
+  </footer>
+
+  <!-- زر السلة العائم -->
+  <div class="floating-cart-bar" id="floatingCart">
+    <button type="button" class="floating-cart-btn" id="openCartBtn">
+      <div class="cart-btn-right">
+        <span class="cart-count-badge" id="cartBadge">0</span>
+        <span>عرض السلة وإتمام الطلب</span>
+      </div>
+      <strong id="cartTotal">0 ج.م</strong>
+    </button>
+  </div>
+
+  <!-- نافذة تفاصيل الصنف -->
+  <div class="modal-backdrop" id="itemDetailModal">
+    <div class="modal-sheet">
+      <button type="button" class="modal-close-x" id="closeItemDetailBtn">✕</button>
+      <img id="detailImg" src="" alt="" class="detail-hero-img" />
+      <div class="detail-body">
+        <span class="item-badge" id="detailBadge" style="position:static; display:none; margin-bottom:8px;"></span>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <h3 id="detailName" style="font-size:1.25rem; font-weight:900;"></h3>
+          <strong id="detailPrice" style="color:var(--brand-primary); font-size:1.15rem; font-weight:900;"></strong>
+        </div>
+        <p id="detailDesc" style="color:var(--text-muted); font-size:0.92rem; line-height:1.65; margin:8px 0 12px;"></p>
+        <div id="detailIncludesBox" class="card-includes-tag" style="margin-bottom:16px;"></div>
+        <div id="detailActions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة السلة والطلب -->
+  <div class="modal-backdrop" id="checkoutModal">
+    <div class="modal-sheet">
+      <div class="modal-sheet-head">
+        <h3>مراجعة الطلب</h3>
+        <button type="button" class="modal-close-x static" id="closeCartBtn">✕</button>
+      </div>
+      <div class="modal-sheet-body">
+        <div class="order-mode-pill" id="orderModeBanner">توصيل دليفري لباب المنزل</div>
+        <div id="selectedItemsList" class="cart-items-list"></div>
+
+        <!-- كود الخصم -->
+        <div class="promo-row">
+          <input type="text" id="promoInput" placeholder="لديك كود خصم؟ أدخله هنا" />
+          <button type="button" id="applyPromoBtn">تطبيق</button>
+        </div>
+        <p id="promoMsg" style="font-size:0.8rem; font-weight:800; display:none; margin-bottom:10px;"></p>
+
+        <!-- ملخص الحساب -->
+        <div class="bill-summary-box">
+          <div class="bill-row"><span>المجموع الفرعي:</span><strong id="subTotalText">0 ج.م</strong></div>
+          <div class="bill-row" id="vatRow"><span>ضريبة القيمة المضافة:</span><strong id="vatText">0 ج.م</strong></div>
+          <div class="bill-row" id="deliveryFeeRow"><span>رسوم التوصيل:</span><strong id="deliveryFeeText">0 ج.م</strong></div>
+          <div class="bill-row" id="discountRow" style="display:none; color:#22c55e;"><span>الخصم:</span><strong id="discountText">-0 ج.م</strong></div>
+          <div class="bill-row total"><span>الإجمالي النهائي:</span><strong id="finalTotal">0 ج.م</strong></div>
+        </div>
+
+        <!-- بيانات العميل -->
+        <div class="checkout-fields">
+          <input type="text" id="custName" placeholder="الاسم بالكامل *" />
+          <input type="tel" id="custPhone" placeholder="رقم الموبايل (01xxxxxxxxx) *" />
+          <div id="deliveryAddressFields">
+            <input type="text" id="custAddress" placeholder="العنوان بالتفصيل (الحي / الشارع / رقم العمارة) *" />
+            <input type="text" id="custLandmark" placeholder="علامة مميزة بجوارك (اختياري)" />
+          </div>
+          <textarea id="custNotes" rows="2" placeholder="ملاحظات للمطبخ (بدون شطة، تسوية زيادة...)"></textarea>
+        </div>
+
+        <button type="button" class="btn-submit-order" id="sendOrderBtn">إرسال الطلب للمطبخ الآن</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة فاتورتي ومتابعة الطلب -->
+  <div class="modal-backdrop" id="orderTrackerModal">
+    <div class="modal-sheet">
+      <div class="modal-sheet-head">
+        <h3 id="trackerOrderNum">فاتورتي الحالية</h3>
+        <button type="button" class="modal-close-x static" id="closeTrackerBtn">✕</button>
+      </div>
+      <div class="modal-sheet-body">
+        <div id="dineinLiveSection" style="text-align:center; padding:12px; background:var(--surface-2); border-radius:16px; margin-bottom:14px;">
+          <span class="open-tab-pill" id="openTabStatusBadge">حساب الترابيزة مفتوح</span>
+          <h4 id="trackerStatusTitle" style="margin:8px 0 4px; font-weight:900;">طلبك قيد التجهيز</h4>
+          <p id="trackerStatusDesc" style="font-size:0.84rem; color:var(--text-muted);"></p>
+          <div style="margin-top:10px;">
+            <small style="color:var(--text-muted); display:block;">الوقت التقديري المتبقي</small>
+            <strong id="countdownDigits" style="font-size:1.6rem; color:var(--brand-primary); font-weight:900;">20:00</strong>
+          </div>
+        </div>
+
+        <div id="deliveryStepsSection" class="delivery-steps-grid" style="display:none;">
+          <div class="d-step" id="step-pending">تم الاستلام</div>
+          <div class="d-step" id="step-preparing">قيد التحضير</div>
+          <div class="d-step" id="step-delivering">مع الطيار</div>
+          <div class="d-step" id="step-completed">تم التسليم</div>
+        </div>
+
+        <div id="trackerOrderDetails" class="bill-summary-box"></div>
+        <button type="button" class="btn-submit-order" id="customerPrintPdfBtn" style="margin-top:10px;">طباعة / حفظ الفاتورة PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة عن المطعم -->
+  <div class="modal-backdrop" id="infoModal">
+    <div class="modal-sheet">
+      <div class="modal-sheet-head">
+        <h3 id="infoModalTitle">عن المطعم</h3>
+        <button type="button" class="modal-close-x static" id="closeInfoBtn">✕</button>
+      </div>
+      <div class="modal-sheet-body" style="line-height:1.8;">
+        <p id="infoModalAbout" style="margin-bottom:12px;"></p>
+        <p><strong>مواعيد العمل:</strong> <span id="infoModalHours"></span></p>
+        <p><strong>العنوان:</strong> <span id="infoModalAddress"></span></p>
+        <p><strong>الهاتف:</strong> <a id="infoModalPhone" href="#" style="color:var(--brand-primary); font-weight:800;"></a></p>
+        <a id="infoModalMapBtn" href="#" target="_blank" class="btn-submit-order" style="display:block; text-align:center; text-decoration:none; margin-top:14px;">افتح الموقع على الخريطة</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-msg" id="toastMsg"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="firebase-config.js?v=40"></script>
+  <script src="script.js?v=40"></script>
+</body>
+</html>

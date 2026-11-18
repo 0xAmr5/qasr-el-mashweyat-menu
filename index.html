@@ -1,245 +1,244 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="light">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title id="pageTitle">قائمة الطعام</title>
+  <title>قصر المشويات | المأكولات الشرقية والمشويات على الفحم</title>
   <link rel="icon" type="image/svg+xml" href="./logo.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=4" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+    html { scroll-behavior: smooth; }
+    body { background: #0B0E14; color: #F8FAFC; overflow-x: hidden; }
+    a { text-decoration: none; color: inherit; }
+
+    /* Navbar */
+    .home-nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 6%;
+      background: rgba(11, 14, 20, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .nav-brand { display: flex; align-items: center; gap: 12px; }
+    .nav-logo { width: 46px; height: 46px; border-radius: 12px; object-fit: cover; flex-shrink: 0; }
+    .nav-brand strong { display: block; font-size: 1.05rem; font-weight: 900; color: #fff; }
+    .nav-brand small { display: block; color: #22c55e; font-size: 0.75rem; font-weight: 700; }
+    .nav-links { display: flex; align-items: center; gap: 18px; }
+    .nav-links a { font-size: 0.9rem; font-weight: 700; color: #cbd5e1; transition: 0.2s; }
+    .nav-links a:hover { color: #D49638; }
+    .nav-cta-btn {
+      background: #D49638 !important; color: #111 !important;
+      padding: 8px 18px; border-radius: 99px; font-weight: 900 !important;
+    }
+
+    /* Hero Section */
+    .hero-section {
+      position: relative; min-height: 82vh;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 60px 6%;
+      background: linear-gradient(to bottom, rgba(11, 14, 20, 0.72), rgba(11, 14, 20, 0.96)),
+                  url('https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1400&q=85') center/cover no-repeat;
+    }
+    .hero-content { max-width: 780px; margin: 0 auto; }
+    .hero-pill {
+      display: inline-block; background: rgba(212, 150, 56, 0.16);
+      color: #D49638; border: 1px solid rgba(212, 150, 56, 0.4);
+      padding: 6px 16px; border-radius: 99px; font-size: 0.85rem; font-weight: 800; margin-bottom: 18px;
+    }
+    .hero-content h1 { font-size: clamp(2rem, 4.5vw, 3.3rem); font-weight: 900; line-height: 1.25; margin-bottom: 16px; }
+    .hero-content h1 span { display: block; color: #D49638; }
+    .hero-content p { color: #cbd5e1; font-size: 1.05rem; line-height: 1.8; margin-bottom: 28px; }
+    .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 36px; }
+    .btn-gold-lg {
+      background: #D49638; color: #111; padding: 13px 28px;
+      border-radius: 14px; font-weight: 900; font-size: 1rem;
+    }
+    .btn-glass-lg {
+      background: rgba(255, 255, 255, 0.08); color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      padding: 13px 26px; border-radius: 14px; font-weight: 800; font-size: 1rem;
+    }
+    .hero-stats-strip {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+      background: rgba(19, 24, 35, 0.85); border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 16px; border-radius: 18px;
+    }
+    .hero-stats-strip strong { display: block; color: #D49638; font-size: 0.95rem; font-weight: 900; }
+    .hero-stats-strip span { font-size: 0.8rem; color: #94a3b8; }
+
+    /* Sections & Cards */
+    .section-wrap { max-width: 1180px; margin: 0 auto; padding: 60px 6%; }
+    .section-head { text-align: center; margin-bottom: 34px; }
+    .section-head h2 { font-size: 1.8rem; font-weight: 900; margin-bottom: 6px; }
+    .section-head p { color: #94a3b8; font-size: 0.95rem; }
+
+    .dishes-preview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 20px; }
+    .preview-card {
+      background: #131823; border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px; overflow: hidden; display: flex; flex-direction: column;
+    }
+    .preview-card img { width: 100%; height: 210px; object-fit: cover; }
+    .preview-card-body { padding: 18px; flex: 1; display: flex; flex-direction: column; }
+    .preview-card-body h3 { font-size: 1.1rem; font-weight: 900; margin-bottom: 6px; }
+    .preview-card-body p { color: #94a3b8; font-size: 0.86rem; line-height: 1.6; flex: 1; margin-bottom: 14px; }
+    .preview-card-foot { display: flex; justify-content: space-between; align-items: center; }
+    .preview-card-foot strong { color: #D49638; font-size: 1.15rem; font-weight: 900; }
+    .preview-card-foot a { background: #D49638; color: #111; padding: 7px 16px; border-radius: 10px; font-weight: 900; font-size: 0.85rem; }
+
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+    .feature-box {
+      background: #131823; border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 22px; border-radius: 18px;
+    }
+    .feature-box h3 { color: #D49638; font-size: 1.05rem; font-weight: 900; margin-bottom: 8px; }
+    .feature-box p { color: #94a3b8; font-size: 0.88rem; line-height: 1.6; }
+
+    /* Footer */
+    .home-footer { background: #080a0f; border-top: 1px solid rgba(255, 255, 255, 0.08); padding: 28px 6% 18px; }
+    .footer-inner {
+      max-width: 1180px; margin: 0 auto 18px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;
+    }
+    .footer-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .footer-btn {
+      background: #131823; border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 9px 16px; border-radius: 12px; font-weight: 800; font-size: 0.86rem;
+    }
+    .footer-btn.gold { background: #D49638; color: #111; border: none; font-weight: 900; }
+    .copyright-line { text-align: center; color: #64748b; font-size: 0.8rem; }
+
+    @media (max-width: 640px) {
+      .nav-links a:not(.nav-cta-btn) { display: none; }
+      .hero-stats-strip { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
-<body data-layout="modern">
+<body>
 
-  <div class="closed-alert-banner" id="closedBanner" style="display:none;">
-    ⚠️ المطعم مغلق لاستقبال الطلبات حالياً — يمكنك تصفح المنيو فقط
-  </div>
-
-  <!-- 1. HERO COVER -->
-  <section class="hero-banner">
-    <img src="./mixed-grill.jpg" id="restCoverImg" alt="غلاف المطعم" class="hero-cover-img" onerror="this.onerror=null; this.src='./mixed-grill.jpg';" />
-    <div class="hero-gradient"></div>
-    <div class="hero-top-controls">
-      <button class="glass-btn" id="openInfoBtn">ℹ️ عن المطعم</button>
-      <div style="display:flex; gap:7px;">
-        <button class="glass-btn pulse-track" id="trackMyOrderBtn" style="display:none;">🧾 فاتورتي / متابعة الطلب</button>
-        <button class="glass-btn" id="themeToggleBtn"><span id="themeIcon">🌙</span></button>
+  <nav class="home-nav">
+    <div class="nav-brand">
+      <img src="./logo.svg" alt="قصر المشويات" class="nav-logo" />
+      <div>
+        <strong>قصر المشويات</strong>
+        <small>● مفتوح الآن</small>
       </div>
     </div>
-  </section>
-
-  <!-- 2. BRAND PROFILE CARD -->
-  <div class="brand-profile-wrapper">
-    <div class="brand-profile-card">
-      <div class="brand-card-main">
-        <div class="brand-logo-ring">
-          <img src="./logo.svg" id="restLogo" alt="شعار المطعم" onerror="this.onerror=null; this.src='./mixed-grill.jpg';" />
-        </div>
-        <div class="brand-titles">
-          <div class="title-status-row">
-            <h1 id="restName">قصر المشويات</h1>
-            <span class="status-pill open" id="restStatusPill">● مفتوح الآن</span>
-          </div>
-          <p id="restTagline">أصل المشويات والطواجن المصرية على الفحم</p>
-        </div>
-      </div>
-
-      <div class="quick-contact-pills">
-        <a href="tel:19888" id="restHotlineLink" class="contact-pill primary-pill">
-          <span>📞</span><span id="restHotlineText">19888</span>
-        </a>
-        <a href="#" target="_blank" id="restMapDirect" class="contact-pill">
-          <span>📍</span><span>الموقع</span>
-        </a>
-        <button type="button" class="contact-pill" id="openInfoBtn2">
-          <span>🕒</span><span>مواعيد العمل</span>
-        </button>
-      </div>
+    <div class="nav-links">
+      <a href="#featuredDishes">الأطباق المميزة</a>
+      <a href="#whyUs">لماذا نحن</a>
+      <a href="menu.html" class="nav-cta-btn">اطلب من المنيو</a>
     </div>
-  </div>
+  </nav>
 
-  <!-- 3. STICKY SEARCH & CATEGORIES -->
-  <header class="sticky-nav-header">
-    <div class="nav-inner">
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="searchInput" placeholder="ابحث عن صنف أو وجبة..." autocomplete="off" />
-        <button id="clearSearchBtn" class="clear-btn">✕</button>
+  <header class="hero-section">
+    <div class="hero-content">
+      <span class="hero-pill">مشويات بلدي • طواجن فخار • شاورما</span>
+      <h1>
+        طعم المشويات البلدي
+        <span>على أصوله من على الفحم</span>
+      </h1>
+      <p>
+        لحوم بلدية طازجة بتتبيلة الحاتي الأصلية، بتتشوي وقت طلبك على فحم طبيعي وتوصلك سخنة لحد باب البيت أو على ترابيزتك في الصالة.
+      </p>
+      <div class="hero-btns">
+        <a href="menu.html" class="btn-gold-lg">افتح المنيو واطلب دلوقتي</a>
+        <a href="#featuredDishes" class="btn-glass-lg">شوف الأكثر طلباً</a>
       </div>
-      <nav class="categories-bar" id="categoriesBar"></nav>
+      <div class="hero-stats-strip">
+        <div>
+          <strong>لحوم بلدية 100%</strong>
+          <span>تجهيز يومي طازج</span>
+        </div>
+        <div>
+          <strong>توصيل سريع</strong>
+          <span>تغليف حراري يحفظ السخونة</span>
+        </div>
+        <div>
+          <strong>طلب من الترابيزة</strong>
+          <span>امسح الـ QR واطلب فوراً</span>
+        </div>
+      </div>
     </div>
   </header>
 
-  <!-- 4. FEATURED SLIDER -->
-  <section class="featured-section" id="featuredSection" style="display:none;">
-    <div class="section-header-row">
-      <h2>🔥 عروض والأكثر طلباً</h2>
-      <span class="section-sub">اختيارات مميزة</span>
+  <section class="section-wrap" id="featuredDishes">
+    <div class="section-head">
+      <h2>الأكثر طلباً في قصر المشويات</h2>
+      <p>تشكيلة مختارة من أشهر أطباقنا المحضرة يومياً</p>
     </div>
-    <div class="featured-slider" id="featuredSlider"></div>
+    <div class="dishes-preview-grid">
+      <article class="preview-card">
+        <img src="https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80" alt="ميكس جريل ملكي" />
+        <div class="preview-card-body">
+          <h3>صينية ميكس جريل ملكي (1 كيلو)</h3>
+          <p>تشكيلة كباب ضاني، كفتة حاتي، شيش طاووق، وريش بتلو مشوية على الفحم.</p>
+          <div class="preview-card-foot">
+            <strong>560 ج.م</strong>
+            <a href="menu.html">اطلب الآن</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="preview-card">
+        <img src="https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=800&q=80" alt="فرخة مشوية على الفحم" />
+        <div class="preview-card-body">
+          <h3>فرخة مشوية كاملة على الفحم</h3>
+          <p>دجاجة كاملة طازجة متبلة بالأعشاب والليمون ومشوية على الفحم.</p>
+          <div class="preview-card-foot">
+            <strong>295 ج.م</strong>
+            <a href="menu.html">اطلب الآن</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="preview-card">
+        <img src="https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?auto=format&fit=crop&w=800&q=80" alt="ريش ضاني مشوية" />
+        <div class="preview-card-body">
+          <h3>ريش ضاني مشوية على الفحم</h3>
+          <p>ريش ضاني بلدي طرية متبلة بالبصل والبهارات الشرقية ومشوية على نار هادئة.</p>
+          <div class="preview-card-foot">
+            <strong>495 ج.م</strong>
+            <a href="menu.html">اطلب الآن</a>
+          </div>
+        </div>
+      </article>
+    </div>
   </section>
 
-  <!-- 5. MAIN MENU -->
-  <main class="menu-container" id="menuContainer">
-    <div class="loading-state">جاري تحضير المنيو...</div>
-  </main>
-
-  <!-- 6. FLOATING CART -->
-  <aside class="floating-cart" id="floatingCart">
-    <div class="cart-summary">
-      <div class="cart-bag-icon">
-        <span>🛍️</span>
-        <span class="cart-badge" id="cartBadge">0</span>
+  <section class="section-wrap" id="whyUs" style="padding-top:0;">
+    <div class="features-grid">
+      <div class="feature-box">
+        <h3>شوي طازج وقت الطلب</h3>
+        <p>كل أوردر بيبدأ شويه لحظة تأكيده عشان يوصلك بأعلى جودة وطعم الفحم الأصلي.</p>
       </div>
-      <div class="cart-text">
-        <span>إجمالي الأصناف</span>
-        <strong id="cartTotal">0 ج.م</strong>
+      <div class="feature-box">
+        <h3>منيو ذكي للترابيزات</h3>
+        <p>اطلب مباشرة من ترابيزتك في المطعم وتابع فاتورتك لحظة بلحظة أو اطلب الويتر بضغطة.</p>
+      </div>
+      <div class="feature-box">
+        <h3>عروض وباقات عائلية</h3>
+        <p>صواني مشويات وطواجن متكاملة بالمرفقات والسلطات لكل المناسبات والتجمعات.</p>
       </div>
     </div>
-    <button class="open-cart-btn" id="openCartBtn">مراجعة الطلب ←</button>
-  </aside>
+  </section>
 
-  <!-- 7. ITEM DETAIL MODAL -->
-  <div class="modal-overlay" id="itemDetailModal">
-    <div class="modal-sheet item-detail-sheet">
-      <button class="floating-close-btn" id="closeItemDetailBtn">✕</button>
-      <div class="detail-hero-img">
-        <img src="" id="detailImg" alt="" />
-        <span class="detail-badge" id="detailBadge" style="display:none;"></span>
+  <footer class="home-footer">
+    <div class="footer-inner">
+      <div>
+        <strong style="font-size:1.1rem; display:block; margin-bottom:4px;">قصر المشويات</strong>
+        <span style="color:#94a3b8; font-size:0.85rem;">يومياً من 12:00 ظهراً حتى 2:00 صباحاً</span>
       </div>
-      <div class="detail-body">
-        <div class="detail-title-price">
-          <h3 id="detailName"></h3>
-          <strong id="detailPrice"></strong>
-        </div>
-        <p id="detailDesc"></p>
-        <div id="detailActions"></div>
+      <div class="footer-actions">
+        <a href="tel:19842" class="footer-btn">الخط الساخن: 19842</a>
+        <a href="menu.html" class="footer-btn gold">تصفح قائمة الطعام</a>
       </div>
     </div>
-  </div>
+    <p class="copyright-line">جميع الحقوق محفوظة &copy; 2026 قصر المشويات</p>
+  </footer>
 
-  <!-- 8. INFO MODAL -->
-  <div class="modal-overlay" id="infoModal">
-    <div class="modal-sheet">
-      <div class="sheet-header">
-        <h3 id="infoModalTitle">عن المطعم</h3>
-        <button class="close-btn" id="closeInfoBtn">✕</button>
-      </div>
-      <div class="sheet-content">
-        <p class="about-text" id="infoAbout"></p>
-        <div class="info-card-box">
-          <div class="info-row"><span>🕒</span><div><strong>مواعيد العمل</strong><p id="infoHours"></p></div></div>
-          <div class="info-row"><span>📍</span><div><strong>العنوان</strong><p id="infoAddress"></p><a href="#" target="_blank" id="infoMapLink" class="map-link-btn">افتح الخريطة ↗</a></div></div>
-          <div class="info-row"><span>📞</span><div><strong>الخط الساخن</strong><p><a href="#" id="infoPhoneLink" style="color:var(--color-primary); font-weight:800; text-decoration:none;"></a></p></div></div>
-        </div>
-        <div class="social-links-row" id="socialLinksRow"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 9. CHECKOUT MODAL -->
-  <div class="modal-overlay" id="checkoutModal">
-    <div class="modal-sheet">
-      <div class="sheet-header">
-        <h3>تأكيد الطلب</h3>
-        <button class="close-btn" id="closeCartBtn">✕</button>
-      </div>
-
-      <div class="sheet-content">
-        <div class="selected-items" id="selectedItemsList"></div>
-
-        <div class="promo-row">
-          <input type="text" id="promoInput" placeholder="عندك كود خصم؟ اكتبه هنا" />
-          <button type="button" class="promo-apply-btn" id="applyPromoBtn">تطبيق</button>
-        </div>
-        <small id="promoMsg" style="font-size:0.72rem; font-weight:700; display:none;"></small>
-
-        <div class="order-type-switch">
-          <button type="button" class="type-btn active" id="typeDineinBtn">🍽️ داخل المطعم (صالة)</button>
-          <button type="button" class="type-btn" id="typeDeliveryBtn">🛵 توصيل دليفري</button>
-        </div>
-
-        <form class="order-form" id="orderForm" onsubmit="event.preventDefault();">
-          <label>الاسم الكريم *<input type="text" id="custName" placeholder="اكتب اسمك" required /></label>
-          <label>رقم الموبايل *<input type="tel" id="custPhone" placeholder="01xxxxxxxxx" required /></label>
-          
-          <label id="tableFieldLabel">اختر رقم الترابيزة *
-            <select id="custTableSelect"></select>
-          </label>
-
-          <label id="addressFieldLabel" style="display:none;">العنوان بالتفصيل *
-            <input type="text" id="custAddress" placeholder="المنطقة، الشارع، العمارة، الشقة..." />
-          </label>
-
-          <label>ملاحظات للطلب (اختياري)<input type="text" id="custNotes" placeholder="بدون بصل، زيادة طحينة..." /></label>
-        </form>
-      </div>
-
-      <div class="sheet-footer">
-        <div class="summary-lines">
-          <div class="summary-line"><span>مجموع الأصناف:</span><span id="subTotalText">0 ج.م</span></div>
-          <div class="summary-line" id="vatRow"><span>ضريبة القيمة المضافة (14%):</span><span id="vatText">0 ج.م</span></div>
-          <div class="summary-line" id="deliveryFeeRow" style="display:none;"><span>رسوم التوصيل:</span><span id="deliveryFeeText">0 ج.م</span></div>
-          <div class="summary-line" id="discountRow" style="display:none; color:#16a34a;"><span>الخصم:</span><span id="discountText">-0 ج.م</span></div>
-          <div class="summary-line grand"><span>الإجمالي النهائي:</span><strong id="finalTotal">0 ج.م</strong></div>
-        </div>
-        <button class="btn-submit-order" id="sendOrderBtn">تأكيد وإرسال الطلب الآن ✓</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 10. LIVE ORDER TRACKER & OPEN TAB BILL MODAL -->
-  <div class="modal-overlay" id="orderTrackerModal">
-    <div class="modal-sheet">
-      <div class="sheet-header">
-        <h3 id="trackerHeaderTitle">متابعة الطلب والفاتورة</h3>
-        <button class="close-btn" id="closeTrackerBtn">✕</button>
-      </div>
-      <div class="sheet-content">
-        <div class="tracker-box">
-          <div class="order-number-badge" id="trackerOrderNum">طلب #0000</div>
-          <h4 id="trackerStatusTitle" style="font-size:1.05rem; margin-bottom:4px;">تم استلام طلبك بنجاح!</h4>
-          <p id="trackerStatusDesc" style="font-size:0.78rem; color:var(--text-muted);"></p>
-
-          <!-- قسم الصالة (عداد تنازلي + حساب مفتوح) -->
-          <div id="dineinLiveSection" style="display:none;">
-            <div class="dinein-timer-circle">
-              <span style="font-size:0.74rem; color:var(--text-muted); font-weight:700; display:block;">الوقت المتبقي لنزول الطلب على الترابيزة</span>
-              <div class="timer-digits" id="countdownDigits">20:00</div>
-            </div>
-            <div class="open-tab-pill" id="openTabStatusBadge">🟢 حساب الترابيزة مفتوح (يمكنك طلب إضافات من الكاشير)</div>
-          </div>
-
-          <!-- قسم الدليفري (4 خطوات) -->
-          <div class="status-steps" id="deliveryStepsSection" style="display:none;">
-            <div class="step-item active" id="step-pending"><span>⏳</span>قيد المراجعة</div>
-            <div class="step-item" id="step-preparing"><span>👨‍🍳</span>يُحضّر الآن</div>
-            <div class="step-item" id="step-delivering"><span>🛵</span>في الطريق</div>
-            <div class="step-item" id="step-completed"><span>✅</span>تم التسليم</div>
-          </div>
-        </div>
-
-        <!-- تفاصيل الفاتورة المحدثة لايف (لو الكاشير ضاف مية أو سلطة بتظهر هنا فوراً) -->
-        <div class="receipt-bill-box" id="trackerOrderDetails"></div>
-
-        <!-- زرار حفظ الفاتورة PDF للعميل -->
-        <button type="button" class="btn-submit-order" id="customerPrintPdfBtn" style="background:var(--bg-element); color:var(--text-main); border:1px solid var(--border-subtle);">
-          📄 حفظ / طباعة الإيصال PDF على موبايلك
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div class="toast-notification" id="toastNotification">
-    <span>✓</span><span id="toastText">تمت الإضافة</span>
-  </div>
-
-  <footer class="app-footer"><p id="footerText">جميع الحقوق محفوظة</p></footer>
-
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-  <script src="firebase-config.js"></script>
-  <script src="script.js?v=4"></script>
 </body>
 </html>

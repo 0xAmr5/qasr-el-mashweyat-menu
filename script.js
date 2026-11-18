@@ -1,537 +1,782 @@
 // script.js
 let restaurantInfo = { ...DEFAULT_RESTAURANT_INFO };
-let menuData = [];
-let allOrdersCache = [];
-let activeCategory = "الكل";
-let cart = {};
-let orderType = "dinein"; // الافتراضي صالة داخل المطعم
+let menuItems = [...DEFAULT_MENU_ITEMS];
+let cart = JSON.parse(localStorage.getItem("rest_cart") || "[]");
+let selectedCategory = "الكل";
+let searchQuery = "";
 let appliedDiscount = 0;
-let currentDetailItem = null;
-let activeOrderId = localStorage.getItem("last_order_id") || null;
-let currentTrackedOrder = null;
 let countdownInterval = null;
+let currentTrackedOrder = null;
+let activeTableOrder = null;
 
-const categoriesBar = document.getElementById("categoriesBar");
-const menuContainer = document.getElementById("menuContainer");
-const featuredSection = document.getElementById("featuredSection");
-const featuredSlider = document.getElementById("featuredSlider");
-const searchInput = document.getElementById("searchInput");
-const clearSearchBtn = document.getElementById("clearSearchBtn");
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80";
+const DEFAULT_COVER_PHOTO = "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1400&q=85";
+
+function resolveSafeImg(img) {
+  if (!img) return FALLBACK_IMG;
+  if (img.startsWith("http") || img.startsWith("data:") || img.startsWith("./")) return img;
+  return `./${img}`;
+}
+
+function resolveSafeCover(url) {
+  if (!url || (!url.startsWith("http") && !url.startsWith("data:"))) {
+    return DEFAULT_COVER_PHOTO;
+  }
+  return url;
+}
+
+// قراءة رقم الترابيزة من الرابط (?table=2)
+const urlParams = new URLSearchParams(window.location.search);
+const tableParam = urlParams.get("table");
+const currentTableNumber = tableParam && Number(tableParam) > 0 ? Number(tableParam) : null;
+const isTableMode = currentTableNumber !== null;
+
+const tableBannerEl = document.getElementById("tableModeBanner");
+const tableLabelEl = document.getElementById("tableBannerLabel");
+if (isTableMode && tableBannerEl && tableLabelEl) {
+  tableBannerEl.style.display = "flex";
+  tableLabelEl.textContent = `ترابيزة رقم ${currentTableNumber}`;
+}
+
+// تقييد خانة رقم الموبايل بـ 11 رقم فقط ومنع الحروف تماماً
+const custPhoneInput = document.getElementById("custPhone");
+if (custPhoneInput) {
+  custPhoneInput.setAttribute("maxlength", "11");
+  custPhoneInput.setAttribute("inputmode", "numeric");
+  custPhoneInput.addEventListener("input", (e) => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 11);
+  });
+}
+
+// دالة طباعة الريسيت الحراري المنسق
+window.printThermalReceipt = (ord, info) => {
+  const rInfo = info || restaurantInfo;
+  const win = window.open("", "_blank", "width=420,height=680");
+  if (!win) {
+    alert("اسمح بفتح النوافذ المنبثقة لطباعة الفاتورة");
+    return;
+  }
+  const rowsHtml = (ord.items || [])
+    .map(
+      (i) => `
+      <tr>
+        <td style="text-align:right;">${i.name}</td>
+        <td style="text-align:center;">${i.qty}</td>
+        <td style="text-align:left;">${i.total} ج.م</td>
+      </tr>
+    `
+    )
+    .join("");
+
+  win.document.write(`
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="UTF-8" />
+      <title>فاتورة #${ord.orderNumber}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800;900&display=swap" rel="stylesheet">
+      <style>
+        body { font-family: 'Cairo', sans-serif; width: 310px; margin: 0 auto; padding: 14px; color: #000; background: #fff; }
+        .center { text-align: center; }
+        .divider { border-top: 1px dashed #333; margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { border-bottom: 1px solid #000; padding-bottom: 5px; }
+        td { padding: 5px 0; }
+        .tot-row { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; }
+        .grand { font-size: 16px; font-weight: 900; border-top: 1px solid #000; padding-top: 6px; margin-top: 6px; }
+      </style>
+    </head>
+    <body>
+      <div class="center">
+        <h2 style="margin:0; font-size:19px;">${rInfo.name || "قصر المشويات"}</h2>
+        <div style="font-size:12px;">${rInfo.address || ""}</div>
+        <div style="font-size:12px;">هاتف: ${rInfo.hotline || ""}</div>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:12px; line-height:1.7;">
+        <div><strong>رقم الفاتورة:</strong> #${ord.orderNumber}</div>
+        <div><strong>النوع:</strong> ${ord.orderType === "dinein" ? `صالة — ترابيزة ${ord.tableNumber}` : "توصيل دليفري"}</div>
+        <div><strong>العميل:</strong> ${ord.customerName} ${ord.customerPhone ? `(${ord.customerPhone})` : ""}</div>
+        <div><strong>التاريخ:</strong> ${new Date(ord.createdAt || Date.now()).toLocaleString("ar-EG")}</div>
+      </div>
+      <div class="divider"></div>
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:right;">الصنف</th>
+            <th style="text-align:center;">الكمية</th>
+            <th style="text-align:left;">السعر</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div class="divider"></div>
+      <div class="tot-row"><span>المجموع الفرعي:</span><span>${ord.subTotal} ج.م</span></div>
+      ${ord.vatAmount > 0 ? `<div class="tot-row"><span>الضريبة (${ord.vatRate || 14}%):</span><span>${ord.vatAmount} ج.م</span></div>` : ""}
+      ${ord.deliveryFee > 0 ? `<div class="tot-row"><span>رسوم التوصيل:</span><span>${ord.deliveryFee} ج.م</span></div>` : ""}
+      ${ord.discount > 0 ? `<div class="tot-row"><span>الخصم:</span><span>-${ord.discount} ج.م</span></div>` : ""}
+      <div class="tot-row grand"><span>الإجمالي النهائي:</span><span>${ord.grandTotal} ج.م</span></div>
+      <div class="divider"></div>
+      <div class="center" style="font-size:12px; font-weight:800;">شكراً لزيارتكم — نتمنى لكم وجبة شهية</div>
+      <script>window.onload = () => setTimeout(() => window.print(), 350);<\/script>
+    </body>
+    </html>
+  `);
+  win.document.close();
+};
+
+// نظام الثيم التلقائي حسب الجهاز (Dark / Light)
+const htmlEl = document.documentElement;
 const themeToggleBtn = document.getElementById("themeToggleBtn");
 const themeIcon = document.getElementById("themeIcon");
 
-const floatingCart = document.getElementById("floatingCart");
-const cartBadge = document.getElementById("cartBadge");
-const cartTotal = document.getElementById("cartTotal");
-const openCartBtn = document.getElementById("openCartBtn");
+function getSystemTheme() {
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
 
-const checkoutModal = document.getElementById("checkoutModal");
-const closeCartBtn = document.getElementById("closeCartBtn");
-const selectedItemsList = document.getElementById("selectedItemsList");
-const sendOrderBtn = document.getElementById("sendOrderBtn");
+function setTheme(theme) {
+  const resolved = theme === "auto" ? getSystemTheme() : theme;
+  htmlEl.setAttribute("data-theme", resolved);
+  if (themeIcon) themeIcon.textContent = resolved === "dark" ? "☀️" : "🌙";
+}
 
-const infoModal = document.getElementById("infoModal");
-const itemDetailModal = document.getElementById("itemDetailModal");
-const orderTrackerModal = document.getElementById("orderTrackerModal");
+setTheme(localStorage.getItem("rest_theme") || "auto");
 
-const toastNotification = document.getElementById("toastNotification");
-const toastText = document.getElementById("toastText");
-let toastTimeout;
+if (window.matchMedia) {
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (!localStorage.getItem("rest_theme")) setTheme("auto");
+  });
+}
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener("click", () => {
+    const next = htmlEl.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    localStorage.setItem("rest_theme", next);
+    setTheme(next);
+  });
+}
 
 function showToast(msg) {
-  toastText.textContent = msg;
-  toastNotification.classList.add("show");
-  clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => toastNotification.classList.remove("show"), 1800);
+  const toast = document.getElementById("toastMsg");
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2300);
 }
 
-function applyDesignSettings(design) {
-  const d = { ...DEFAULT_RESTAURANT_INFO.design, ...design };
-  document.body.setAttribute("data-layout", d.layout || "modern");
-  document.documentElement.style.setProperty("--color-primary", d.primaryColor || "#D97706");
-  document.documentElement.style.setProperty("--color-primary-soft", `${d.primaryColor || "#D97706"}22`);
-  document.documentElement.style.setProperty("--card-radius", d.borderRadius || "18px");
-  document.documentElement.style.setProperty("--font-scale", d.fontScale || "1");
-
-  const userOverrideTheme = localStorage.getItem("user_theme_override");
-  const activeTheme = userOverrideTheme || d.themeMode || "light";
-  document.documentElement.setAttribute("data-theme", activeTheme);
-  themeIcon.textContent = activeTheme === "dark" ? "☀️" : "🌙";
+// نداء الويتر من الترابيزة
+const callWaiterBtn = document.getElementById("callWaiterBtn");
+if (callWaiterBtn) {
+  callWaiterBtn.addEventListener("click", () => {
+    if (!isTableMode) return;
+    callWaiterBtn.disabled = true;
+    callWaiterBtn.textContent = "جاري الإرسال...";
+    const callId = `waiter_${currentTableNumber}_${Date.now()}`;
+    db.ref(`orders/${callId}`)
+      .set({
+        orderId: callId,
+        orderType: "waiter_call",
+        tableNumber: currentTableNumber,
+        status: "pending",
+        createdAt: Date.now()
+      })
+      .then(() => {
+        showToast(`تم إرسال نداء للكابتن — ترابيزة رقم ${currentTableNumber}`);
+        callWaiterBtn.textContent = "تم استدعاء الويتر ✓";
+        setTimeout(() => {
+          callWaiterBtn.disabled = false;
+          callWaiterBtn.textContent = "استدعاء الويتر";
+        }, 8000);
+      })
+      .catch(() => {
+        alert("تعذر إرسال النداء، تأكد من الاتصال بالإنترنت");
+        callWaiterBtn.disabled = false;
+        callWaiterBtn.textContent = "استدعاء الويتر";
+      });
+  });
 }
 
-themeToggleBtn.addEventListener("click", () => {
-  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", next);
-  localStorage.setItem("user_theme_override", next);
-  themeIcon.textContent = next === "dark" ? "☀️" : "🌙";
-});
+function applyCustomDesign(design) {
+  const d = { ...DEFAULT_RESTAURANT_INFO.design, ...(design || {}) };
+  document.documentElement.style.setProperty("--brand-primary", d.primaryColor || "#D49638");
+  document.documentElement.style.setProperty("--card-radius", d.borderRadius || "20px");
+  document.documentElement.style.fontSize = `${Number(d.fontScale || 1) * 16}px`;
 
-function populateTablesDropdown() {
-  const select = document.getElementById("custTableSelect");
-  const total = Number(restaurantInfo.totalTables || 12);
-  // معرفة الترابيزات المشغولة حالياً
-  const occupiedTables = allOrdersCache
-    .filter(o => o.orderType === "dinein" && o.status !== "completed" && o.status !== "cancelled")
-    .map(o => Number(o.tableNumber));
-
-  let optionsHTML = `<option value="">-- اختر رقم الترابيزة --</option>`;
-  for (let t = 1; t <= total; t++) {
-    const isBusy = occupiedTables.includes(t);
-    optionsHTML += `<option value="${t}">ترابيزة رقم ${t} ${isBusy ? "(مشغولة حالياً)" : "(متاحة)"}</option>`;
+  if (!localStorage.getItem("rest_theme")) {
+    setTheme(d.themeMode || "auto");
   }
-  select.innerHTML = optionsHTML;
+
+  const menuContainer = document.getElementById("menuContainer");
+  if (menuContainer) {
+    menuContainer.className = `menu-sections-wrap layout-${d.layout || "luxury"} ${
+      d.showIncludes === false ? "hide-includes" : ""
+    }`;
+  }
 }
 
-function applyRestaurantInfo(info) {
-  restaurantInfo = { ...DEFAULT_RESTAURANT_INFO, ...info };
-  applyDesignSettings(restaurantInfo.design);
+function renderRestaurantInfo() {
+  document.title = isTableMode
+    ? `${restaurantInfo.name} | ترابيزة ${currentTableNumber}`
+    : `${restaurantInfo.name} | قائمة الطعام`;
 
-  document.title = `${restaurantInfo.name} | قائمة الطعام`;
-  document.getElementById("restName").textContent = restaurantInfo.name;
-  document.getElementById("restTagline").textContent = restaurantInfo.tagline;
-  if (restaurantInfo.logo) document.getElementById("restLogo").src = restaurantInfo.logo;
-  if (restaurantInfo.coverImg) document.getElementById("restCoverImg").src = restaurantInfo.coverImg;
+  const restNameEl = document.getElementById("restName");
+  if (restNameEl) restNameEl.textContent = restaurantInfo.name;
 
-  const isOpen = restaurantInfo.isOpen !== false;
-  document.getElementById("closedBanner").style.display = isOpen ? "none" : "block";
-  const statusPill = document.getElementById("restStatusPill");
-  statusPill.className = `status-pill ${isOpen ? "open" : "closed"}`;
-  statusPill.textContent = isOpen ? "● مفتوح الآن" : "● مغلق حالياً";
-  sendOrderBtn.disabled = !isOpen;
-  sendOrderBtn.textContent = isOpen ? "تأكيد وإرسال الطلب الآن ✓" : "عذراً، المطعم مغلق حالياً";
+  const restTaglineEl = document.getElementById("restTagline");
+  if (restTaglineEl) restTaglineEl.textContent = restaurantInfo.tagline || "";
 
-  document.getElementById("restHotlineText").textContent = restaurantInfo.hotline;
-  document.getElementById("restHotlineLink").href = `tel:${restaurantInfo.hotline}`;
-  document.getElementById("restMapDirect").href = restaurantInfo.mapUrl || "#";
-  document.getElementById("footerText").textContent = `${restaurantInfo.name} • جميع الحقوق محفوظة`;
+  const restLogoEl = document.getElementById("restLogo");
+  if (restLogoEl) restLogoEl.src = resolveSafeImg(restaurantInfo.logo || "./logo.svg");
 
-  document.getElementById("infoModalTitle").textContent = `عن ${restaurantInfo.name}`;
-  document.getElementById("infoAbout").textContent = restaurantInfo.about;
-  document.getElementById("infoHours").textContent = restaurantInfo.workingHours;
-  document.getElementById("infoAddress").textContent = restaurantInfo.address;
-  document.getElementById("infoMapLink").href = restaurantInfo.mapUrl || "#";
-  document.getElementById("infoPhoneLink").textContent = restaurantInfo.hotline;
-  document.getElementById("infoPhoneLink").href = `tel:${restaurantInfo.hotline}`;
+  const restCoverEl = document.getElementById("restCoverImg");
+  if (restCoverEl) restCoverEl.src = resolveSafeCover(restaurantInfo.coverImg);
 
-  const socialRow = document.getElementById("socialLinksRow");
-  let socialHTML = "";
-  if (restaurantInfo.facebook) socialHTML += `<a href="${restaurantInfo.facebook}" target="_blank" class="social-pill">فيسبوك</a>`;
-  if (restaurantInfo.instagram) socialHTML += `<a href="${restaurantInfo.instagram}" target="_blank" class="social-pill">إنستجرام</a>`;
-  socialRow.innerHTML = socialHTML;
+  const hotlinePill = document.getElementById("hotlinePill");
+  if (hotlinePill) {
+    hotlinePill.textContent = `الخط الساخن: ${restaurantInfo.hotline}`;
+    hotlinePill.href = `tel:${restaurantInfo.hotline}`;
+  }
 
-  populateTablesDropdown();
-  updateCartUIOnly();
-}
-
-function initFirebaseListeners() {
-  db.ref("restaurantInfo").on("value", (snapshot) => {
-    const data = snapshot.val();
-    if (data) applyRestaurantInfo(data);
-    else {
-      db.ref("restaurantInfo").set(DEFAULT_RESTAURANT_INFO);
-      applyRestaurantInfo(DEFAULT_RESTAURANT_INFO);
-    }
-  });
-
-  db.ref("menuItems").on("value", (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      const rawList = Array.isArray(data) ? data : Object.values(data);
-      menuData = rawList.filter(item => item && item.available !== false);
+  const mapPill = document.getElementById("mapLinkPill");
+  if (mapPill) {
+    if (restaurantInfo.mapUrl) {
+      mapPill.href = restaurantInfo.mapUrl;
+      mapPill.style.display = "inline-flex";
     } else {
-      const initialObj = {};
-      DEFAULT_MENU_ITEMS.forEach(item => { initialObj[item.id] = item; });
-      db.ref("menuItems").set(initialObj);
-      menuData = DEFAULT_MENU_ITEMS;
+      mapPill.style.display = "none";
     }
-    renderCategories();
-    renderFeatured();
+  }
+
+  const statusPill = document.getElementById("storeStatusPill");
+  if (statusPill) {
+    if (restaurantInfo.isOpen === false) {
+      statusPill.textContent = "● مغلق حالياً";
+      statusPill.classList.add("closed");
+    } else {
+      statusPill.textContent = "● مفتوح الآن";
+      statusPill.classList.remove("closed");
+    }
+  }
+
+  const infoTitle = document.getElementById("infoModalTitle");
+  if (infoTitle) infoTitle.textContent = `عن ${restaurantInfo.name}`;
+  const infoAbout = document.getElementById("infoModalAbout");
+  if (infoAbout) infoAbout.textContent = restaurantInfo.about || "";
+  const infoHours = document.getElementById("infoModalHours");
+  if (infoHours) infoHours.textContent = restaurantInfo.workingHours || "";
+  const infoAddress = document.getElementById("infoModalAddress");
+  if (infoAddress) infoAddress.textContent = restaurantInfo.address || "";
+  const phoneLink = document.getElementById("infoModalPhone");
+  if (phoneLink) {
+    phoneLink.textContent = restaurantInfo.hotline || "";
+    phoneLink.href = `tel:${restaurantInfo.hotline}`;
+  }
+  const mapBtn = document.getElementById("infoModalMapBtn");
+  if (mapBtn) mapBtn.href = restaurantInfo.mapUrl || "#";
+
+  applyCustomDesign(restaurantInfo.design);
+  updateCartUI();
+}
+
+const searchInput = document.getElementById("searchInput");
+const clearSearchBtn = document.getElementById("clearSearchBtn");
+if (searchInput) {
+  searchInput.addEventListener("input", (e) => {
+    searchQuery = e.target.value.trim().toLowerCase();
+    if (clearSearchBtn) clearSearchBtn.style.display = searchQuery ? "block" : "none";
     renderMenu();
-    updateCartUIOnly();
   });
-
-  db.ref("orders").on("value", (snap) => {
-    const data = snap.val();
-    allOrdersCache = data ? Object.values(data) : [];
-    populateTablesDropdown();
+}
+if (clearSearchBtn) {
+  clearSearchBtn.addEventListener("click", () => {
+    if (searchInput) searchInput.value = "";
+    searchQuery = "";
+    clearSearchBtn.style.display = "none";
+    renderMenu();
   });
-
-  if (activeOrderId) listenToOrderStatus(activeOrderId);
 }
 
 function renderCategories() {
-  const uniqueCats = ["الكل", ...new Set(menuData.map(item => item.category))];
-  if (!uniqueCats.includes(activeCategory)) activeCategory = "الكل";
-  categoriesBar.innerHTML = uniqueCats.map(cat => `
-    <button class="cat-tab ${cat === activeCategory ? 'active' : ''}" onclick="selectCategory('${cat}', this)">${cat}</button>
-  `).join("");
-}
+  const bar = document.getElementById("categoriesBar");
+  if (!bar) return;
+  const categories = ["الكل", ...new Set(menuItems.map((i) => i.category))];
+  bar.innerHTML = categories
+    .map((cat) => `<button type="button" class="cat-chip ${selectedCategory === cat ? "active" : ""}" data-cat="${cat}">${cat}</button>`)
+    .join("");
 
-function selectCategory(cat, el) {
-  activeCategory = cat;
-  renderCategories();
-  renderMenu();
-  if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  bar.querySelectorAll(".cat-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedCategory = btn.dataset.cat;
+      renderCategories();
+      renderMenu();
+    });
+  });
 }
 
 function renderFeatured() {
-  const featured = menuData.filter(i => i.badge && i.badge.trim() !== "");
-  if (featured.length === 0 || activeCategory !== "الكل" || searchInput.value.trim() !== "") {
-    featuredSection.style.display = "none";
+  const section = document.getElementById("featuredSection");
+  const slider = document.getElementById("featuredSlider");
+  if (!section || !slider) return;
+  const d = { ...DEFAULT_RESTAURANT_INFO.design, ...(restaurantInfo.design || {}) };
+  if (d.showFeatured === false) {
+    section.style.display = "none";
     return;
   }
-  featuredSection.style.display = "block";
-  featuredSlider.innerHTML = featured.map(item => {
-    const qty = cart[item.id] || 0;
-    return `
-      <div class="featured-card">
-        <div class="featured-thumb" onclick="openItemDetail('${item.id}')">
-          <span class="item-badge ${item.badge.includes('عرض') ? 'offer' : ''}">${item.badge}</span>
-          <img src="${item.img}" alt="${item.name}" loading="lazy" onerror="this.onerror=null; this.src='./mixed-grill.jpg';" />
-        </div>
-        <div class="featured-body">
-          <h4 onclick="openItemDetail('${item.id}')">${item.name}</h4>
-          <div class="featured-footer">
-            <span class="item-price">${item.price} ج.م</span>
-            ${qty > 0 ? `
-              <div class="qty-counter">
-                <button class="qty-btn" onclick="decreaseCart('${item.id}')">-</button>
-                <span class="qty-num">${qty}</span>
-                <button class="qty-btn" onclick="addToCart('${item.id}')">+</button>
-              </div>
-            ` : `<button class="add-btn" onclick="addToCart('${item.id}', '${item.name.replace(/'/g, "\\'")}')">+</button>`}
+  const featured = menuItems.filter((i) => i.available !== false && i.badge && i.badge.trim() !== "");
+  if (featured.length === 0 || searchQuery || selectedCategory !== "الكل") {
+    section.style.display = "none";
+    return;
+  }
+  section.style.display = "block";
+  slider.innerHTML = featured
+    .map(
+      (item) => `
+      <div class="featured-card-mini" onclick="openItemDetail(${item.id})">
+        <img src="${resolveSafeImg(item.img)}" alt="${item.name}" loading="lazy" onerror="this.onerror=null; this.src='${FALLBACK_IMG}';" />
+        <div class="featured-mini-body">
+          <h4>${item.name}</h4>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="color:var(--brand-primary); font-size:0.95rem;">${item.price} ج.م</strong>
+            <button type="button" class="btn-add-to-cart" style="padding:5px 12px; font-size:0.78rem;" onclick="event.stopPropagation(); changeQty(${item.id}, 1)">+ أضف</button>
           </div>
         </div>
       </div>
-    `;
-  }).join("");
+    `
+    )
+    .join("");
 }
 
-function addToCart(id, name) {
-  cart[id] = (cart[id] || 0) + 1;
-  updateCart();
-  if (name) showToast(`تمت إضافة ${name}`);
-}
-
-function decreaseCart(id) {
-  if (cart[id]) {
-    cart[id]--;
-    if (cart[id] <= 0) delete cart[id];
-    updateCart();
-  }
-}
-
-function calculateTotals() {
-  let count = 0;
-  let subTotal = 0;
-  Object.keys(cart).forEach(id => {
-    const item = menuData.find(d => String(d.id) === String(id));
-    if (item) {
-      count += cart[id];
-      subTotal += cart[id] * Number(item.price);
-    }
-  });
-
-  const vatRate = restaurantInfo.vatEnabled !== false ? Number(restaurantInfo.vatRate || 14) : 0;
-  const vatAmount = Math.round((subTotal * vatRate) / 100);
-  const deliveryFee = (orderType === "delivery" && subTotal > 0) ? Number(restaurantInfo.deliveryFee || 0) : 0;
-  const discount = subTotal > 0 ? appliedDiscount : 0;
-  const grandTotal = Math.max(0, subTotal + vatAmount + deliveryFee - discount);
-
-  return { count, subTotal, vatRate, vatAmount, deliveryFee, discount, grandTotal };
-}
-
-function updateCartUIOnly() {
-  const { count, subTotal, vatRate, vatAmount, deliveryFee, discount, grandTotal } = calculateTotals();
-  cartBadge.textContent = count;
-  cartTotal.textContent = `${subTotal} ج.م`;
-
-  document.getElementById("subTotalText").textContent = `${subTotal} ج.م`;
-  
-  const vatRow = document.getElementById("vatRow");
-  if (vatRate > 0) {
-    vatRow.style.display = "flex";
-    vatRow.querySelector("span:first-child").textContent = `ضريبة القيمة المضافة (${vatRate}%):`;
-    document.getElementById("vatText").textContent = `${vatAmount} ج.م`;
-  } else {
-    vatRow.style.display = "none";
-  }
-
-  document.getElementById("deliveryFeeRow").style.display = orderType === "delivery" ? "flex" : "none";
-  document.getElementById("deliveryFeeText").textContent = deliveryFee > 0 ? `${deliveryFee} ج.م` : "مجاني";
-  
-  document.getElementById("discountRow").style.display = discount > 0 ? "flex" : "none";
-  document.getElementById("discountText").textContent = `-${discount} ج.م`;
-  document.getElementById("finalTotal").textContent = `${grandTotal} ج.م`;
-
-  if (count > 0) floatingCart.classList.add("active");
-  else {
-    floatingCart.classList.remove("active");
-    checkoutModal.classList.remove("active");
-  }
-  if (currentDetailItem) renderDetailActions(currentDetailItem);
-}
-
-function updateCart() {
-  updateCartUIOnly();
-  renderFeatured();
-  renderMenu();
-  renderCartSheet();
-}
-
-function renderCartSheet() {
-  const ids = Object.keys(cart);
-  if (ids.length === 0) {
-    selectedItemsList.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:10px 0;">السلة فارغة</p>`;
-    return;
-  }
-  selectedItemsList.innerHTML = ids.map(id => {
-    const item = menuData.find(d => String(d.id) === String(id));
-    if (!item) return "";
-    const qty = cart[id];
-    return `
-      <div class="cart-item-row">
-        <div>
-          <strong>${item.name}</strong>
-          <div style="color:var(--text-muted); font-size:0.75rem;">${item.price * qty} ج.م (${item.price} × ${qty})</div>
-        </div>
-        <div class="qty-counter">
-          <button class="qty-btn" onclick="decreaseCart('${item.id}')">-</button>
-          <span class="qty-num">${qty}</span>
-          <button class="qty-btn" onclick="addToCart('${item.id}')">+</button>
-        </div>
-      </div>
-    `;
-  }).join("");
+function getItemQty(id) {
+  const found = cart.find((c) => Number(c.id) === Number(id));
+  return found ? found.qty : 0;
 }
 
 function renderMenu() {
-  const q = searchInput.value.trim().toLowerCase();
-  const filtered = menuData.filter(item => {
-    const matchCat = activeCategory === "الكل" || item.category === activeCategory;
-    const matchSearch = item.name.toLowerCase().includes(q) || (item.desc && item.desc.toLowerCase().includes(q));
+  renderFeatured();
+  const container = document.getElementById("menuContainer");
+  if (!container) return;
+
+  const filtered = menuItems.filter((item) => {
+    const matchCat = selectedCategory === "الكل" || item.category === selectedCategory;
+    const matchSearch =
+      !searchQuery ||
+      item.name.toLowerCase().includes(searchQuery) ||
+      (item.desc && item.desc.toLowerCase().includes(searchQuery)) ||
+      (item.includes && item.includes.toLowerCase().includes(searchQuery));
     return matchCat && matchSearch;
   });
 
   if (filtered.length === 0) {
-    menuContainer.innerHTML = `<div class="loading-state">لا توجد أصناف مطابقة للبحث.</div>`;
+    container.innerHTML = `<div class="loading-state">لا توجد أصناف مطابقة لبحثك</div>`;
     return;
   }
 
-  const groups = {};
-  filtered.forEach(item => {
-    if (!groups[item.category]) groups[item.category] = [];
-    groups[item.category].push(item);
+  const grouped = {};
+  filtered.forEach((item) => {
+    if (!grouped[item.category]) grouped[item.category] = [];
+    grouped[item.category].push(item);
   });
 
-  menuContainer.innerHTML = Object.keys(groups).map(cat => `
-    <section class="menu-section">
-      <h3 class="section-title">${cat}</h3>
-      <div class="items-list">
-        ${groups[cat].map(item => {
-          const qty = cart[item.id] || 0;
-          const badgeHTML = item.badge ? `<span class="item-badge ${item.badge.includes('عرض') ? 'offer' : ''}">${item.badge}</span>` : "";
-          return `
-            <div class="item-card">
-              <div class="item-thumb" onclick="openItemDetail('${item.id}')">
-                ${badgeHTML}
-                <img src="${item.img}" alt="${item.name}" loading="lazy" onerror="this.onerror=null; this.src='./mixed-grill.jpg';" />
-              </div>
-              <div class="item-details">
-                <h4 onclick="openItemDetail('${item.id}')">${item.name}</h4>
-                <p>${item.desc || ""}</p>
-                <div class="item-footer">
-                  <span class="item-price">${item.price} ج.م</span>
-                  ${qty > 0 ? `
-                    <div class="qty-counter">
-                      <button class="qty-btn" onclick="decreaseCart('${item.id}')">-</button>
-                      <span class="qty-num">${qty}</span>
-                      <button class="qty-btn" onclick="addToCart('${item.id}')">+</button>
-                    </div>
-                  ` : `<button class="add-btn" onclick="addToCart('${item.id}', '${item.name.replace(/'/g, "\\'")}')">أضف +</button>`}
-                </div>
-              </div>
+  let html = "";
+  for (const [catName, items] of Object.entries(grouped)) {
+    html += `
+      <section class="category-block">
+        <div class="category-heading">
+          <span>${catName}</span>
+          <span class="category-count-pill">${items.length} صنف</span>
+        </div>
+        <div class="items-responsive-grid">
+    `;
+
+    items.forEach((item) => {
+      const qty = getItemQty(item.id);
+      const isAvail = item.available !== false;
+      const actionHTML = !isAvail
+        ? `<span style="color:#ef4444; font-weight:800; font-size:0.8rem;">غير متاح</span>`
+        : qty > 0
+        ? `<div class="qty-stepper">
+             <button type="button" onclick="changeQty(${item.id}, -1)">-</button>
+             <span>${qty}</span>
+             <button type="button" onclick="changeQty(${item.id}, 1)">+</button>
+           </div>`
+        : `<button type="button" class="btn-add-to-cart" onclick="changeQty(${item.id}, 1)">+ أضف للسلة</button>`;
+
+      html += `
+        <article class="menu-item-card ${!isAvail ? "unavailable" : ""}">
+          <div class="card-media-box" onclick="openItemDetail(${item.id})">
+            ${item.badge ? `<span class="item-badge">${item.badge}</span>` : ""}
+            ${!isAvail ? `<div class="sold-out-overlay">نفدت الكمية</div>` : ""}
+            <img src="${resolveSafeImg(item.img)}" alt="${item.name}" loading="lazy" onerror="this.onerror=null; this.src='${FALLBACK_IMG}';" />
+          </div>
+          <div class="card-content-box">
+            <h4 class="card-title-text" onclick="openItemDetail(${item.id})">${item.name}</h4>
+            <p class="card-desc-text">${item.desc || ""}</p>
+            ${item.includes ? `<div class="card-includes-tag">${item.includes}</div>` : ""}
+            <div class="card-bottom-bar">
+              <span class="price-tag">${item.price} ج.م</span>
+              ${actionHTML}
             </div>
-          `;
-        }).join("")}
-      </div>
-    </section>
-  `).join("");
+          </div>
+        </article>
+      `;
+    });
+
+    html += `</div></section>`;
+  }
+  container.innerHTML = html;
 }
 
-window.openItemDetail = function(id) {
-  const item = menuData.find(d => String(d.id) === String(id));
-  if (!item) return;
-  currentDetailItem = item;
-  document.getElementById("detailImg").src = item.img || "./mixed-grill.jpg";
+const itemDetailModal = document.getElementById("itemDetailModal");
+window.openItemDetail = (id) => {
+  const item = menuItems.find((i) => Number(i.id) === Number(id));
+  if (!item || !itemDetailModal) return;
+
+  document.getElementById("detailImg").src = resolveSafeImg(item.img);
   document.getElementById("detailName").textContent = item.name;
   document.getElementById("detailPrice").textContent = `${item.price} ج.م`;
-  document.getElementById("detailDesc").textContent = item.desc || "محضر طازجاً بأجود المكونات.";
-  const badgeEl = document.getElementById("detailBadge");
-  if (item.badge) { badgeEl.textContent = item.badge; badgeEl.style.display = "inline-block"; }
-  else badgeEl.style.display = "none";
-  renderDetailActions(item);
-  itemDetailModal.classList.add("active");
-};
+  document.getElementById("detailDesc").textContent = item.desc || "";
 
-function renderDetailActions(item) {
-  const qty = cart[item.id] || 0;
-  const box = document.getElementById("detailActions");
-  if (qty > 0) {
-    box.innerHTML = `
+  const badgeEl = document.getElementById("detailBadge");
+  if (item.badge) {
+    badgeEl.textContent = item.badge;
+    badgeEl.style.display = "inline-block";
+  } else {
+    badgeEl.style.display = "none";
+  }
+
+  const incBox = document.getElementById("detailIncludesBox");
+  if (item.includes) {
+    incBox.textContent = item.includes;
+    incBox.style.display = "block";
+  } else {
+    incBox.style.display = "none";
+  }
+
+  const qty = getItemQty(item.id);
+  const actionsBox = document.getElementById("detailActions");
+  if (item.available === false) {
+    actionsBox.innerHTML = `<button type="button" class="btn-submit-order" disabled style="opacity:0.5;">هذا الصنف غير متاح حالياً</button>`;
+  } else if (qty > 0) {
+    actionsBox.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div class="qty-counter" style="padding:6px 12px;">
-          <button class="qty-btn" onclick="decreaseCart('${item.id}')">-</button>
-          <span class="qty-num" style="font-size:1rem;">${qty}</span>
-          <button class="qty-btn" onclick="addToCart('${item.id}')">+</button>
+        <strong>الكمية في سلتك:</strong>
+        <div class="qty-stepper">
+          <button type="button" onclick="changeQty(${item.id}, -1); openItemDetail(${item.id});">-</button>
+          <span>${qty}</span>
+          <button type="button" onclick="changeQty(${item.id}, 1); openItemDetail(${item.id});">+</button>
         </div>
-        <button class="add-btn" style="padding:10px 18px; background:var(--color-primary); color:var(--color-primary-text);" onclick="itemDetailModal.classList.remove('active')">متابعة التصفح ✓</button>
       </div>
     `;
   } else {
-    box.innerHTML = `<button class="btn-submit-order" onclick="addToCart('${item.id}', '${item.name.replace(/'/g, "\\'")}')">إضافة للطلب • ${item.price} ج.م</button>`;
+    actionsBox.innerHTML = `<button type="button" class="btn-submit-order" onclick="changeQty(${item.id}, 1); itemDetailModal.classList.remove('active');">+ أضف إلى السلة (${item.price} ج.م)</button>`;
   }
+
+  itemDetailModal.classList.add("active");
+};
+
+const closeItemDetailBtn = document.getElementById("closeItemDetailBtn");
+if (closeItemDetailBtn) closeItemDetailBtn.addEventListener("click", () => itemDetailModal.classList.remove("active"));
+
+window.changeQty = (id, delta) => {
+  if (restaurantInfo.isOpen === false) {
+    showToast("نعتذر، المطعم مغلق حالياً");
+    return;
+  }
+  const item = menuItems.find((i) => Number(i.id) === Number(id));
+  if (!item || item.available === false) return;
+
+  const idx = cart.findIndex((c) => Number(c.id) === Number(id));
+  if (idx > -1) {
+    cart[idx].qty += delta;
+    if (cart[idx].qty <= 0) cart.splice(idx, 1);
+    else if (delta > 0) showToast(`تمت إضافة "${item.name}"`);
+  } else if (delta > 0) {
+    cart.push({ id: item.id, name: item.name, price: Number(item.price), qty: 1 });
+    showToast(`تمت إضافة "${item.name}" للسلة`);
+  }
+  localStorage.setItem("rest_cart", JSON.stringify(cart));
+  updateCartUI();
+  renderMenu();
+};
+
+function calculateTotals() {
+  const subTotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
+  const vatEnabled = restaurantInfo.vatEnabled !== false;
+  const vatRate = vatEnabled ? Number(restaurantInfo.vatRate || 14) : 0;
+  const vatAmount = Math.round((subTotal * vatRate) / 100);
+  const deliveryFee = isTableMode ? 0 : subTotal > 0 ? Number(restaurantInfo.deliveryFee || 0) : 0;
+  const discount = subTotal > 0 ? appliedDiscount : 0;
+  const grandTotal = Math.max(0, subTotal + vatAmount + deliveryFee - discount);
+  return { subTotal, vatEnabled, vatRate, vatAmount, deliveryFee, discount, grandTotal };
 }
 
-document.getElementById("closeItemDetailBtn").addEventListener("click", () => { itemDetailModal.classList.remove("active"); currentDetailItem = null; });
-itemDetailModal.addEventListener("click", (e) => { if (e.target === itemDetailModal) { itemDetailModal.classList.remove("active"); currentDetailItem = null; } });
+function updateCartUI() {
+  const totalCount = cart.reduce((s, c) => s + c.qty, 0);
+  const { subTotal, vatEnabled, vatAmount, deliveryFee, discount, grandTotal } = calculateTotals();
 
-document.getElementById("applyPromoBtn").addEventListener("click", () => {
-  const entered = document.getElementById("promoInput").value.trim().toUpperCase();
-  const msgEl = document.getElementById("promoMsg");
-  msgEl.style.display = "block";
+  const badge = document.getElementById("cartBadge");
+  if (badge) badge.textContent = totalCount;
+  const totalEl = document.getElementById("cartTotal");
+  if (totalEl) totalEl.textContent = `${grandTotal} ج.م`;
+  const floatEl = document.getElementById("floatingCart");
+  if (floatEl) floatEl.classList.toggle("visible", totalCount > 0);
 
-  if (restaurantInfo.promoCode && entered === restaurantInfo.promoCode.toUpperCase()) {
-    appliedDiscount = Number(restaurantInfo.promoDiscount || 0);
-    msgEl.style.color = "#16a34a";
-    msgEl.textContent = `✓ تم تطبيق خصم ${appliedDiscount} ج.م بنجاح!`;
-  } else {
-    appliedDiscount = 0;
-    msgEl.style.color = "#dc2626";
-    msgEl.textContent = "✕ كود الخصم غير صحيح أو منتهي";
-  }
-  updateCartUIOnly();
-});
+  const subEl = document.getElementById("subTotalText");
+  if (subEl) subEl.textContent = `${subTotal} ج.م`;
+  const vatRow = document.getElementById("vatRow");
+  if (vatRow) vatRow.style.display = vatEnabled ? "flex" : "none";
+  const vatText = document.getElementById("vatText");
+  if (vatText) vatText.textContent = `${vatAmount} ج.م`;
+  const delRow = document.getElementById("deliveryFeeRow");
+  if (delRow) delRow.style.display = isTableMode ? "none" : "flex";
+  const delText = document.getElementById("deliveryFeeText");
+  if (delText) delText.textContent = deliveryFee === 0 ? "مجاني" : `${deliveryFee} ج.م`;
+  const discRow = document.getElementById("discountRow");
+  if (discRow) discRow.style.display = discount > 0 ? "flex" : "none";
+  const discText = document.getElementById("discountText");
+  if (discText) discText.textContent = `-${discount} ج.م`;
+  const finalEl = document.getElementById("finalTotal");
+  if (finalEl) finalEl.textContent = `${grandTotal} ج.م`;
+}
 
-searchInput.addEventListener("input", () => {
-  clearSearchBtn.style.display = searchInput.value.trim().length > 0 ? "block" : "none";
-  renderFeatured();
-  renderMenu();
-});
-clearSearchBtn.addEventListener("click", () => { searchInput.value = ""; clearSearchBtn.style.display = "none"; renderFeatured(); renderMenu(); });
+const applyPromoBtn = document.getElementById("applyPromoBtn");
+if (applyPromoBtn) {
+  applyPromoBtn.addEventListener("click", () => {
+    const code = document.getElementById("promoInput").value.trim().toUpperCase();
+    const validCode = (restaurantInfo.promoCode || "").trim().toUpperCase();
+    const msgEl = document.getElementById("promoMsg");
+    if (validCode && code === validCode) {
+      appliedDiscount = Number(restaurantInfo.promoDiscount || 0);
+      msgEl.style.display = "block";
+      msgEl.style.color = "#22c55e";
+      msgEl.textContent = `تم تفعيل الخصم بقيمة ${appliedDiscount} ج.م`;
+    } else {
+      appliedDiscount = 0;
+      msgEl.style.display = "block";
+      msgEl.style.color = "#ef4444";
+      msgEl.textContent = "كود الخصم غير صحيح";
+    }
+    updateCartUI();
+  });
+}
 
-document.getElementById("openInfoBtn").addEventListener("click", () => infoModal.classList.add("active"));
-document.getElementById("openInfoBtn2").addEventListener("click", () => infoModal.classList.add("active"));
-document.getElementById("closeInfoBtn").addEventListener("click", () => infoModal.classList.remove("active"));
-infoModal.addEventListener("click", (e) => { if (e.target === infoModal) infoModal.classList.remove("active"); });
+const checkoutModal = document.getElementById("checkoutModal");
+const openCartBtn = document.getElementById("openCartBtn");
+if (openCartBtn) {
+  openCartBtn.addEventListener("click", () => {
+    if (cart.length === 0) return;
+    const banner = document.getElementById("orderModeBanner");
+    const addressFields = document.getElementById("deliveryAddressFields");
+    if (isTableMode) {
+      banner.textContent = activeTableOrder
+        ? `إضافة أصناف لحساب ترابيزة رقم ${currentTableNumber} المفتوح`
+        : `طلب داخل الصالة — ترابيزة رقم ${currentTableNumber}`;
+      addressFields.style.display = "none";
+      if (activeTableOrder) {
+        if (!document.getElementById("custName").value) document.getElementById("custName").value = activeTableOrder.customerName || "";
+        if (!document.getElementById("custPhone").value) document.getElementById("custPhone").value = activeTableOrder.customerPhone || "";
+      }
+    } else {
+      banner.textContent = "توصيل دليفري لباب المنزل";
+      addressFields.style.display = "block";
+    }
 
-openCartBtn.addEventListener("click", () => checkoutModal.classList.add("active"));
-closeCartBtn.addEventListener("click", () => checkoutModal.classList.remove("active"));
-checkoutModal.addEventListener("click", (e) => { if (e.target === checkoutModal) checkoutModal.classList.remove("active"); });
+    document.getElementById("selectedItemsList").innerHTML = cart
+      .map(
+        (item) => `
+        <div class="cart-item-row">
+          <div>
+            <strong style="display:block; font-size:0.88rem;">${item.name}</strong>
+            <small style="color:var(--brand-primary); font-weight:800;">${item.price * item.qty} ج.م</small>
+          </div>
+          <div class="qty-stepper">
+            <button type="button" onclick="changeQty(${item.id}, -1); document.getElementById('openCartBtn').click();">-</button>
+            <span>${item.qty}</span>
+            <button type="button" onclick="changeQty(${item.id}, 1); document.getElementById('openCartBtn').click();">+</button>
+          </div>
+        </div>
+      `
+      )
+      .join("");
 
-// التبديل بين صالة ودليفري
-document.getElementById("typeDineinBtn").addEventListener("click", function() {
-  orderType = "dinein";
-  this.classList.add("active");
-  document.getElementById("typeDeliveryBtn").classList.remove("active");
-  document.getElementById("tableFieldLabel").style.display = "flex";
-  document.getElementById("addressFieldLabel").style.display = "none";
-  updateCartUIOnly();
-});
+    updateCartUI();
+    checkoutModal.classList.add("active");
+  });
+}
 
-document.getElementById("typeDeliveryBtn").addEventListener("click", function() {
-  orderType = "delivery";
-  this.classList.add("active");
-  document.getElementById("typeDineinBtn").classList.remove("active");
-  document.getElementById("tableFieldLabel").style.display = "none";
-  document.getElementById("addressFieldLabel").style.display = "flex";
-  updateCartUIOnly();
-});
+const closeCartBtn = document.getElementById("closeCartBtn");
+if (closeCartBtn) closeCartBtn.addEventListener("click", () => checkoutModal.classList.remove("active"));
 
-// إرسال الطلب
-sendOrderBtn.addEventListener("click", () => {
-  if (restaurantInfo.isOpen === false) return;
+const sendOrderBtn = document.getElementById("sendOrderBtn");
+if (sendOrderBtn) {
+  sendOrderBtn.addEventListener("click", () => {
+    if (cart.length === 0) return;
+    const name = document.getElementById("custName").value.trim();
+    const phone = document.getElementById("custPhone").value.replace(/[^0-9]/g, "");
+    const address = document.getElementById("custAddress").value.trim();
+    const landmark = document.getElementById("custLandmark") ? document.getElementById("custLandmark").value.trim() : "";
+    const notes = document.getElementById("custNotes").value.trim();
 
-  const name = document.getElementById("custName").value.trim();
-  const phone = document.getElementById("custPhone").value.trim();
-  const tableNumber = document.getElementById("custTableSelect").value;
-  const address = document.getElementById("custAddress").value.trim();
-  const notes = document.getElementById("custNotes").value.trim();
+    if (!name) {
+      alert("من فضلك أدخل الاسم");
+      return;
+    }
+    if (!/^01[0125][0-9]{8}$/.test(phone)) {
+      alert("من فضلك أدخل رقم موبايل مصري صحيح مكون من 11 رقم (يبدأ بـ 010 أو 011 أو 012 أو 015)");
+      return;
+    }
+    if (!isTableMode && !address) {
+      alert("من فضلك أدخل عنوان التوصيل");
+      return;
+    }
 
-  if (!name || !phone) { alert("يرجى إدخال الاسم ورقم الموبايل"); return; }
-  if (orderType === "dinein" && !tableNumber) { alert("يرجى اختيار رقم الترابيزة"); return; }
-  if (orderType === "delivery" && !address) { alert("يرجى إدخال العنوان بالتفصيل للتوصيل"); return; }
+    sendOrderBtn.disabled = true;
+    sendOrderBtn.textContent = "جاري إرسال الطلب...";
 
-  const itemsList = [];
-  Object.keys(cart).forEach(id => {
-    const item = menuData.find(d => String(d.id) === String(id));
-    if (item) {
-      itemsList.push({
-        id: item.id,
-        name: item.name,
-        price: Number(item.price),
-        qty: cart[id],
-        total: Number(item.price) * cart[id]
+    const { subTotal, vatRate, vatAmount, deliveryFee, discount, grandTotal } = calculateTotals();
+    const prepMinutes = Number(restaurantInfo.prepTimeMinutes || 20);
+    const now = Date.now();
+    const newCartItems = cart.map((c) => ({ ...c, total: c.price * c.qty }));
+
+    // دمج الأصناف الجديدة على الفاتورة المفتوحة لنفس الترابيزة
+    if (isTableMode && activeTableOrder && activeTableOrder.status !== "completed") {
+      const mergedItems = [...(activeTableOrder.items || [])];
+      newCartItems.forEach((newIt) => {
+        const foundIdx = mergedItems.findIndex((m) => Number(m.id) === Number(newIt.id) && m.name === newIt.name);
+        if (foundIdx > -1) {
+          mergedItems[foundIdx].qty += newIt.qty;
+          mergedItems[foundIdx].total = mergedItems[foundIdx].qty * mergedItems[foundIdx].price;
+        } else {
+          mergedItems.push(newIt);
+        }
       });
+
+      const updatedSub = mergedItems.reduce((s, i) => s + Number(i.total), 0);
+      const updatedVat = Math.round((updatedSub * vatRate) / 100);
+      const updatedDisc = Number(activeTableOrder.discount || 0) + discount;
+      const updatedGrand = Math.max(0, updatedSub + updatedVat - updatedDisc);
+      const updatedNotes = notes
+        ? activeTableOrder.notes
+          ? `${activeTableOrder.notes} | ${notes}`
+          : notes
+        : activeTableOrder.notes || "";
+
+      db.ref(`orders/${activeTableOrder.orderId}`)
+        .update({
+          items: mergedItems,
+          subTotal: updatedSub,
+          vatRate,
+          vatAmount: updatedVat,
+          discount: updatedDisc,
+          grandTotal: updatedGrand,
+          notes: updatedNotes,
+          status: "pending",
+          estimatedReadyAt: now + prepMinutes * 60 * 1000
+        })
+        .then(() => {
+          cart = [];
+          appliedDiscount = 0;
+          localStorage.removeItem("rest_cart");
+          updateCartUI();
+          renderMenu();
+          checkoutModal.classList.remove("active");
+          sendOrderBtn.disabled = false;
+          sendOrderBtn.textContent = "إرسال الطلب للمطبخ الآن";
+          document.getElementById("orderTrackerModal").classList.add("active");
+          showToast("تمت إضافة طلبك الجديد على نفس فاتورة الترابيزة");
+        })
+        .catch(() => {
+          alert("حدث خطأ أثناء الإرسال");
+          sendOrderBtn.disabled = false;
+          sendOrderBtn.textContent = "إرسال الطلب للمطبخ الآن";
+        });
+      return;
+    }
+
+    // إنشاء طلب جديد
+    const orderId = `ord_${now}`;
+    const orderNumber = Math.floor(1000 + Math.random() * 9000);
+    const fullAddress = landmark ? `${address} (علامة مميزة: ${landmark})` : address;
+
+    const orderData = {
+      orderId,
+      orderNumber,
+      customerName: name,
+      customerPhone: phone,
+      orderType: isTableMode ? "dinein" : "delivery",
+      tableNumber: isTableMode ? currentTableNumber : null,
+      address: isTableMode ? `صالة - ترابيزة ${currentTableNumber}` : fullAddress,
+      landmark: landmark || "",
+      notes,
+      items: newCartItems,
+      subTotal,
+      vatRate,
+      vatAmount,
+      deliveryFee,
+      discount,
+      grandTotal,
+      status: "pending",
+      createdAt: now,
+      estimatedReadyAt: now + prepMinutes * 60 * 1000
+    };
+
+    db.ref(`orders/${orderId}`)
+      .set(orderData)
+      .then(() => {
+        cart = [];
+        appliedDiscount = 0;
+        localStorage.removeItem("rest_cart");
+        updateCartUI();
+        renderMenu();
+        checkoutModal.classList.remove("active");
+        sendOrderBtn.disabled = false;
+        sendOrderBtn.textContent = "إرسال الطلب للمطبخ الآن";
+
+        if (isTableMode) {
+          document.getElementById("orderTrackerModal").classList.add("active");
+        } else {
+          showToast(`تم إرسال طلبك بنجاح! رقم الطلب #${orderNumber}`);
+        }
+      })
+      .catch(() => {
+        alert("حدث خطأ أثناء الإرسال، تأكد من الاتصال بالإنترنت");
+        sendOrderBtn.disabled = false;
+        sendOrderBtn.textContent = "إرسال الطلب للمطبخ الآن";
+      });
+  });
+}
+
+// متابعة الفاتورة المفتوحة للترابيزة (?table=رقم)
+const trackerModal = document.getElementById("orderTrackerModal");
+const trackMyOrderBtn = document.getElementById("trackMyOrderBtn");
+
+if (trackMyOrderBtn) {
+  trackMyOrderBtn.style.display = "none";
+  trackMyOrderBtn.addEventListener("click", () => {
+    if (isTableMode && activeTableOrder && trackerModal) {
+      trackerModal.classList.add("active");
     }
   });
+}
 
-  if (itemsList.length === 0) return;
+const closeTrackerBtn = document.getElementById("closeTrackerBtn");
+if (closeTrackerBtn) closeTrackerBtn.addEventListener("click", () => trackerModal.classList.remove("active"));
 
-  const { subTotal, vatRate, vatAmount, deliveryFee, discount, grandTotal } = calculateTotals();
-  const orderNumber = Math.floor(1000 + Math.random() * 9000);
-  const orderId = `ord_${Date.now()}`;
-  const prepMins = Number(restaurantInfo.prepTimeMinutes || 20);
-
-  const orderPayload = {
-    orderId,
-    orderNumber,
-    customerName: name,
-    customerPhone: phone,
-    orderType,
-    tableNumber: orderType === "dinein" ? Number(tableNumber) : null,
-    address: orderType === "dinein" ? `صالة - ترابيزة ${tableNumber}` : address,
-    notes,
-    items: itemsList,
-    subTotal,
-    vatRate,
-    vatAmount,
-    deliveryFee,
-    discount,
-    grandTotal,
-    status: "pending", // pending (مفتوح/قيد التحضير) | preparing | delivering | completed (تم التحصيل)
-    estimatedReadyAt: Date.now() + prepMins * 60 * 1000,
-    createdAt: Date.now()
-  };
-
-  sendOrderBtn.disabled = true;
-  sendOrderBtn.textContent = "جاري إرسال الطلب...";
-
-  db.ref(`orders/${orderId}`).set(orderPayload).then(() => {
-    cart = {};
-    appliedDiscount = 0;
-    localStorage.setItem("last_order_id", orderId);
-    activeOrderId = orderId;
-    checkoutModal.classList.remove("active");
-    updateCart();
-    listenToOrderStatus(orderId);
-    orderTrackerModal.classList.add("active");
-  }).finally(() => {
-    sendOrderBtn.disabled = false;
-    sendOrderBtn.textContent = "تأكيد وإرسال الطلب الآن ✓";
+const customerPrintPdfBtn = document.getElementById("customerPrintPdfBtn");
+if (customerPrintPdfBtn) {
+  customerPrintPdfBtn.addEventListener("click", () => {
+    if (currentTrackedOrder) printThermalReceipt(currentTrackedOrder, restaurantInfo);
   });
-});
+}
 
-// عداد تنازلي للصالة
-function startDineinCountdown(readyTimestamp) {
-  if (countdownInterval) clearInterval(countdownInterval);
+function startCountdown(targetTs) {
+  clearInterval(countdownInterval);
   const digitsEl = document.getElementById("countdownDigits");
-
+  if (!digitsEl) return;
   function tick() {
-    const diff = readyTimestamp - Date.now();
+    const diff = targetTs - Date.now();
     if (diff <= 0) {
       digitsEl.textContent = "00:00";
-      document.getElementById("trackerStatusTitle").textContent = "طلبك جاهز وينزل على الترابيزة الآن! 🍽️";
       clearInterval(countdownInterval);
       return;
     }
@@ -543,89 +788,81 @@ function startDineinCountdown(readyTimestamp) {
   countdownInterval = setInterval(tick, 1000);
 }
 
-// متابعة الطلب والفاتورة لايف
-function listenToOrderStatus(orderId) {
-  const trackBtn = document.getElementById("trackMyOrderBtn");
-  db.ref(`orders/${orderId}`).on("value", (snap) => {
-    const ord = snap.val();
-    currentTrackedOrder = ord;
-    if (!ord) {
-      trackBtn.style.display = "none";
-      return;
-    }
-    trackBtn.style.display = "inline-flex";
-    document.getElementById("trackerOrderNum").textContent = `طلب #${ord.orderNumber} ${ord.orderType === "dinein" ? `• ترابيزة ${ord.tableNumber}` : ""}`;
+function updateTrackerModalUI(ord) {
+  currentTrackedOrder = ord;
+  document.getElementById("trackerOrderNum").textContent = `فاتورة ترابيزة ${ord.tableNumber} (#${ord.orderNumber})`;
+  document.getElementById("dineinLiveSection").style.display = "block";
+  document.getElementById("deliveryStepsSection").style.display = "none";
 
-    const dineinBox = document.getElementById("dineinLiveSection");
-    const deliveryBox = document.getElementById("deliveryStepsSection");
+  const tabBadge = document.getElementById("openTabStatusBadge");
+  tabBadge.textContent = `حساب ترابيزة ${ord.tableNumber} مفتوح الآن`;
+  document.getElementById("trackerStatusTitle").textContent =
+    ord.status === "preparing" ? "طلبك قيد التحضير في المطبخ" : "تم استلام طلبك بنجاح";
+  document.getElementById("trackerStatusDesc").textContent =
+    "الفاتورة تظل مفتوحة على هذه الترابيزة ويمكنك طلب أي أصناف إضافية في أي وقت.";
 
-    if (ord.orderType === "dinein") {
-      // تجربة الصالة: عداد وقت + حساب مفتوح بدون "في الطريق"
-      dineinBox.style.display = "block";
-      deliveryBox.style.display = "none";
-      const tabBadge = document.getElementById("openTabStatusBadge");
+  if (ord.estimatedReadyAt) startCountdown(ord.estimatedReadyAt);
 
-      if (ord.status === "completed") {
-        if (countdownInterval) clearInterval(countdownInterval);
-        document.getElementById("countdownDigits").textContent = "تم التحصيل ✓";
-        document.getElementById("trackerStatusTitle").textContent = "تم سداد الفاتورة وإغلاق الترابيزة ✅";
-        document.getElementById("trackerStatusDesc").textContent = "شكراً لزيارتك! يمكنك حفظ الإيصال PDF بالأسفل.";
-        tabBadge.textContent = "✅ تم التحصيل والحساب مغلق";
-        tabBadge.style.background = "rgba(37, 99, 235, 0.14)";
-        tabBadge.style.color = "#2563eb";
-      } else {
-        document.getElementById("trackerStatusTitle").textContent = "تم استلام طلبك وجاري تحضيره 👨‍🍳";
-        document.getElementById("trackerStatusDesc").textContent = `سينزل على ترابيزة رقم ${ord.tableNumber} خلال الوقت الموضح.`;
-        tabBadge.textContent = "🟢 حساب الترابيزة مفتوح (أي إضافات تطلبها ستظهر هنا فوراً)";
-        startDineinCountdown(ord.estimatedReadyAt || (ord.createdAt + 20 * 60000));
-      }
-    } else {
-      // تجربة الدليفري
-      dineinBox.style.display = "none";
-      deliveryBox.style.display = "grid";
-
-      const steps = ["pending", "preparing", "delivering", "completed"];
-      steps.forEach(s => document.getElementById(`step-${s}`).classList.remove("active"));
-      const currentIdx = steps.indexOf(ord.status);
-      if (currentIdx >= 0) {
-        for (let i = 0; i <= currentIdx; i++) document.getElementById(`step-${steps[i]}`).classList.add("active");
-      }
-
-      const statusInfo = {
-        pending: { title: "تم استلام طلبك بنجاح ⏳", desc: "طلبك وصل للكاشير وجاري تأكيده الآن." },
-        preparing: { title: "الشيف بدأ يجهز طلبك 👨‍🍳", desc: "أكلك بيتحضر طازج الآن في المطبخ." },
-        delivering: { title: "طلبك خرج للتوصيل 🛵", desc: "المندوب في الطريق إليك حالاً." },
-        completed: { title: "تم تسليم الطلب بنجاح ✅", desc: "بالهنا والشفا! نتمنى لك تجربة رائعة." },
-        cancelled: { title: "عذراً، تم إلغاء الطلب ❌", desc: "يرجى التواصل مع المطعم للاستفسار." }
-      };
-      const info = statusInfo[ord.status] || statusInfo.pending;
-      document.getElementById("trackerStatusTitle").textContent = info.title;
-      document.getElementById("trackerStatusDesc").textContent = info.desc;
-    }
-
-    // عرض الفاتورة المحدثة بالضريبة وأي إضافات ضافها الكاشير
-    document.getElementById("trackerOrderDetails").innerHTML = `
-      <strong style="display:block; margin-bottom:6px; color:var(--color-primary);">تفاصيل الفاتورة الحالية:</strong>
-      ${(ord.items || []).map(i => `<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>• ${i.name} × ${i.qty}</span><strong>${i.total} ج.م</strong></div>`).join("")}
-      <div style="border-top:1px dashed var(--border-subtle); margin-top:6px; padding-top:6px;">
-        <div style="display:flex; justify-content:space-between; color:var(--text-muted);"><span>المجموع الفرعي:</span><span>${ord.subTotal} ج.م</span></div>
-        ${ord.vatAmount > 0 ? `<div style="display:flex; justify-content:space-between; color:var(--text-muted);"><span>ضريبة القيمة المضافة (${ord.vatRate || 14}%):</span><span>${ord.vatAmount} ج.م</span></div>` : ""}
-        ${ord.deliveryFee > 0 ? `<div style="display:flex; justify-content:space-between; color:var(--text-muted);"><span>التوصيل:</span><span>${ord.deliveryFee} ج.م</span></div>` : ""}
-        ${ord.discount > 0 ? `<div style="display:flex; justify-content:space-between; color:#16a34a;"><span>الخصم:</span><span>-${ord.discount} ج.م</span></div>` : ""}
-        <div style="display:flex; justify-content:space-between; font-size:0.98rem; font-weight:900; margin-top:5px;">
-          <span>الإجمالي النهائي:</span><strong style="color:var(--color-primary);">${ord.grandTotal} ج.م</strong>
-        </div>
+  document.getElementById("trackerOrderDetails").innerHTML = `
+    ${(ord.items || [])
+      .map(
+        (i) =>
+          `<div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>${i.name} × ${i.qty}</span><strong>${i.total} ج.م</strong></div>`
+      )
+      .join("")}
+    <div style="border-top:1px dashed var(--border-color); margin-top:8px; padding-top:6px;">
+      <div style="display:flex; justify-content:space-between;"><span>الصافي:</span><span>${ord.subTotal} ج.م</span></div>
+      ${ord.vatAmount > 0 ? `<div style="display:flex; justify-content:space-between;"><span>الضريبة (${ord.vatRate || 14}%):</span><span>${ord.vatAmount} ج.م</span></div>` : ""}
+      ${ord.discount > 0 ? `<div style="display:flex; justify-content:space-between; color:#22c55e;"><span>الخصم:</span><span>-${ord.discount} ج.م</span></div>` : ""}
+      <div style="display:flex; justify-content:space-between; font-weight:900; color:var(--brand-primary); font-size:1.05rem; margin-top:4px;">
+        <span>الإجمالي الحالي:</span><span>${ord.grandTotal} ج.م</span>
       </div>
-    `;
+    </div>
+  `;
+}
+
+if (isTableMode) {
+  db.ref("orders").on("value", (snap) => {
+    const all = snap.val() ? Object.values(snap.val()) : [];
+    const openForThisTable = all
+      .filter((o) => o.orderType === "dinein" && Number(o.tableNumber) === currentTableNumber && o.status !== "completed")
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    if (openForThisTable.length > 0) {
+      activeTableOrder = openForThisTable[0];
+      if (trackMyOrderBtn) trackMyOrderBtn.style.display = "inline-flex";
+      updateTrackerModalUI(activeTableOrder);
+    } else {
+      if (activeTableOrder && trackerModal && trackerModal.classList.contains("active")) {
+        trackerModal.classList.remove("active");
+        showToast("تم سداد وتحصيل حساب الترابيزة — شكراً لزيارتكم");
+      }
+      activeTableOrder = null;
+      currentTrackedOrder = null;
+      if (trackMyOrderBtn) trackMyOrderBtn.style.display = "none";
+    }
   });
 }
 
-document.getElementById("customerPrintPdfBtn").addEventListener("click", () => {
-  if (currentTrackedOrder) printThermalReceipt(currentTrackedOrder, restaurantInfo);
+const infoModal = document.getElementById("infoModal");
+const openInfoBtn = document.getElementById("openInfoBtn");
+const closeInfoBtn = document.getElementById("closeInfoBtn");
+if (openInfoBtn) openInfoBtn.addEventListener("click", () => infoModal.classList.add("active"));
+if (closeInfoBtn) closeInfoBtn.addEventListener("click", () => infoModal.classList.remove("active"));
+
+// التشغيل الفوري
+renderRestaurantInfo();
+renderCategories();
+renderMenu();
+
+db.ref("restaurantInfo").on("value", (snap) => {
+  if (snap.exists()) restaurantInfo = { ...DEFAULT_RESTAURANT_INFO, ...snap.val() };
+  renderRestaurantInfo();
 });
 
-document.getElementById("trackMyOrderBtn").addEventListener("click", () => orderTrackerModal.classList.add("active"));
-document.getElementById("closeTrackerBtn").addEventListener("click", () => orderTrackerModal.classList.remove("active"));
-orderTrackerModal.addEventListener("click", (e) => { if (e.target === orderTrackerModal) orderTrackerModal.classList.remove("active"); });
-
-initFirebaseListeners();
+db.ref("menuItems").on("value", (snap) => {
+  const data = snap.val();
+  menuItems = data ? (Array.isArray(data) ? data : Object.values(data)).filter(Boolean) : [...DEFAULT_MENU_ITEMS];
+  renderCategories();
+  renderMenu();
+});
