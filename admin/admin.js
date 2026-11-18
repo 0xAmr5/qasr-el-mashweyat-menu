@@ -5,7 +5,91 @@ let allOrders = [];
 let currentOrderFilter = "active";
 let currentReportPeriod = "today";
 
-// نظام الصوت (يرن عند وصول طلب جديد أو نداء ويتر فقط)
+// ==========================================
+// طبقة التحقق والجلسة الآمنة (Session Guard)
+// ==========================================
+let isAdminAuthenticated = false;
+const DEFAULT_ADMIN_USER = "01018622861";
+const DEFAULT_ADMIN_PASS_HASH = "c7e320b93b02d667e75b80a61957e5082e128a1d761a7e0a00a191a63621a6c2"; // 20268855
+
+let storedAdminAuth = {
+  username: DEFAULT_ADMIN_USER,
+  passHash: DEFAULT_ADMIN_PASS_HASH
+};
+
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+let inactivityTimer = null;
+
+async function sha256Hex(text) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(String(text));
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function lockDashboardNow() {
+  isAdminAuthenticated = false;
+  sessionStorage.removeItem("admin_session_sig");
+  clearTimeout(inactivityTimer);
+  window.location.replace("login.html");
+}
+
+function resetInactivityTimer() {
+  if (!isAdminAuthenticated) return;
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(() => {
+    lockDashboardNow();
+  }, INACTIVITY_TIMEOUT_MS);
+}
+
+["click", "mousemove", "keydown", "touchstart"].forEach((evt) => {
+  document.addEventListener(evt, resetInactivityTimer, { passive: true });
+});
+
+const lockAdminNowBtn = document.getElementById("lockAdminNowBtn");
+if (lockAdminNowBtn) {
+  lockAdminNowBtn.addEventListener("click", lockDashboardNow);
+}
+
+db.ref("adminAuth").on("value", async (snap) => {
+  if (snap.exists()) {
+    const val = snap.val();
+    storedAdminAuth = {
+      username: val.username || DEFAULT_ADMIN_USER,
+      passHash: val.passHash || DEFAULT_ADMIN_PASS_HASH
+    };
+  } else {
+    storedAdminAuth = {
+      username: DEFAULT_ADMIN_USER,
+      passHash: DEFAULT_ADMIN_PASS_HASH
+    };
+    await db.ref("adminAuth").set(storedAdminAuth);
+  }
+
+  const expectedSig = await sha256Hex(`${storedAdminAuth.username}:${storedAdminAuth.passHash}`);
+  const savedSig = sessionStorage.getItem("admin_session_sig");
+
+  if (!savedSig || savedSig !== expectedSig) {
+    lockDashboardNow();
+    return;
+  }
+
+  if (!isAdminAuthenticated) {
+    isAdminAuthenticated = true;
+    resetInactivityTimer();
+    populateSettingsAndDesign();
+    renderOrders();
+    renderTablesGrid();
+    renderAdminMenuTable();
+    renderReports();
+  }
+});
+
+// ==========================================
+// نظام الصوت
+// ==========================================
 let audioCtx = null;
 
 function initAudioAuto() {
@@ -24,6 +108,7 @@ function initAudioAuto() {
 });
 
 function playOrderBell() {
+  if (!isAdminAuthenticated) return;
   try {
     initAudioAuto();
     if (!audioCtx) return;
@@ -51,8 +136,11 @@ function showAdminToast(msg) {
   setTimeout(() => toast.classList.remove("show"), 2400);
 }
 
-// دالة طباعة الريسيت الحراري المنسق
+// ==========================================
+// طباعة الريسيت الحراري
+// ==========================================
 function printThermalReceiptAdmin(ord) {
+  if (!isAdminAuthenticated) return;
   const win = window.open("", "_blank", "width=420,height=680");
   if (!win) {
     alert("اسمح بفتح النوافذ المنبثقة لطباعة الريسيت");
@@ -127,37 +215,9 @@ function printThermalReceiptAdmin(ord) {
   win.document.close();
 }
 
-// شاشة قفل الكاشير (PIN)
-const pinOverlay = document.getElementById("pinOverlay");
-const pinInput = document.getElementById("pinInput");
-const unlockBtn = document.getElementById("unlockBtn");
-const pinError = document.getElementById("pinError");
-
-if (sessionStorage.getItem("admin_unlocked") === "1" && pinOverlay) {
-  pinOverlay.style.display = "none";
-}
-
-function checkPin() {
-  initAudioAuto();
-  const entered = pinInput.value.trim();
-  const expected = String(restaurantInfo.adminPin || "1234");
-  if (entered === expected) {
-    sessionStorage.setItem("admin_unlocked", "1");
-    pinOverlay.style.display = "none";
-  } else {
-    pinError.style.display = "block";
-    pinInput.value = "";
-  }
-}
-
-if (unlockBtn) unlockBtn.addEventListener("click", checkPin);
-if (pinInput) {
-  pinInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") checkPin();
-  });
-}
-
+// ==========================================
 // القائمة الجانبية والتبويبات
+// ==========================================
 const adminSidebar = document.getElementById("adminSidebar");
 const toggleSidebarBtn = document.getElementById("toggleSidebarBtn");
 const mobilePageTitle = document.getElementById("mobilePageTitle");
@@ -170,6 +230,7 @@ if (toggleSidebarBtn && adminSidebar) {
 
 document.querySelectorAll(".side-link").forEach((btn) => {
   btn.addEventListener("click", () => {
+    if (!isAdminAuthenticated) return;
     document.querySelectorAll(".side-link").forEach((b) => b.classList.remove("active"));
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
     btn.classList.add("active");
@@ -189,11 +250,11 @@ if (enableSoundBtn) {
   });
 }
 
-// حالة المطعم (مفتوح / مغلق)
 const storeOpenToggle = document.getElementById("storeOpenToggle");
 const storeOpenLabel = document.getElementById("storeOpenLabel");
 if (storeOpenToggle) {
   storeOpenToggle.addEventListener("change", () => {
+    if (!isAdminAuthenticated) return;
     const isOpen = storeOpenToggle.checked;
     storeOpenLabel.textContent = isOpen ? "المطعم مفتوح الآن" : "المطعم مغلق حالياً";
     db.ref("restaurantInfo/isOpen").set(isOpen);
@@ -201,7 +262,67 @@ if (storeOpenToggle) {
   });
 }
 
+// ==========================================
+// تحديث المعاينة الحية للـ 10 أشكال في تبويب التصميم
+// ==========================================
+function updateLiveDesignPreview() {
+  const layoutEl = document.querySelector('input[name="designLayout"]:checked');
+  const layout = layoutEl ? layoutEl.value : "luxury";
+  const primary = document.getElementById("designPrimaryColor").value || "#D49638";
+  const theme = document.getElementById("designThemeMode").value || "dark";
+  const font = document.getElementById("designFontFamily").value || "Cairo";
+  const radius = document.getElementById("designBorderRadius").value || "20px";
+  const scale = Number(document.getElementById("designFontScale").value || 1);
+  const showIncludes = document.getElementById("designShowIncludes").checked;
+  const showBadges = document.getElementById("designShowBadges").checked;
+
+  const stage = document.getElementById("liveDesignPreviewBox");
+  const card = document.getElementById("previewSampleCard");
+  const badge = document.getElementById("previewBadge");
+  const inc = document.getElementById("previewIncludes");
+  const price = document.getElementById("previewPrice");
+  const addBtn = document.getElementById("previewAddBtn");
+
+  if (!stage || !card) return;
+
+  stage.classList.toggle("light-mode", theme === "light");
+  card.className = `preview-sample-card layout-${layout}`;
+  card.style.setProperty("--preview-accent", primary);
+  card.style.borderRadius = layout === "pill" ? "34px" : radius;
+  card.style.fontFamily = `'${font}', sans-serif`;
+  card.style.fontSize = `${scale * 16}px`;
+
+  if (badge) {
+    badge.style.display = showBadges ? "inline-block" : "none";
+    badge.style.background = primary;
+  }
+  if (inc) {
+    inc.style.display = showIncludes ? "block" : "none";
+    inc.style.color = primary;
+  }
+  if (price) price.style.color = primary;
+  if (addBtn) addBtn.style.background = primary;
+}
+
+["designPrimaryColor", "designThemeMode", "designFontFamily", "designBorderRadius", "designFontScale", "designShowIncludes", "designShowBadges", "designShowFeatured", "designShowSearch"].forEach((id) => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener("input", updateLiveDesignPreview);
+    el.addEventListener("change", updateLiveDesignPreview);
+  }
+});
+
+document.querySelectorAll('input[name="designLayout"]').forEach((r) => {
+  r.addEventListener("change", updateLiveDesignPreview);
+});
+
+window.setDesignColor = (hex) => {
+  document.getElementById("designPrimaryColor").value = hex;
+  updateLiveDesignPreview();
+};
+
 function populateSettingsAndDesign() {
+  if (!isAdminAuthenticated) return;
   document.getElementById("adminRestTitle").textContent = restaurantInfo.name || "قصر المشويات";
   if (restaurantInfo.logo) {
     document.getElementById("adminHeaderLogo").src = restaurantInfo.logo.startsWith("./")
@@ -230,7 +351,12 @@ function populateSettingsAndDesign() {
   document.getElementById("setPrepTime").value = restaurantInfo.prepTimeMinutes ?? 20;
   document.getElementById("setPromoCode").value = restaurantInfo.promoCode || "";
   document.getElementById("setPromoDiscount").value = restaurantInfo.promoDiscount ?? 30;
-  document.getElementById("setAdminPin").value = restaurantInfo.adminPin || "1234";
+
+  const userField = document.getElementById("setAdminUsername");
+  if (userField) userField.value = storedAdminAuth.username || DEFAULT_ADMIN_USER;
+  const pinField = document.getElementById("setAdminPin");
+  if (pinField) pinField.value = "";
+
   document.getElementById("totalTablesInput").value = restaurantInfo.totalTables || 16;
 
   const d = { ...DEFAULT_RESTAURANT_INFO.design, ...(restaurantInfo.design || {}) };
@@ -238,26 +364,49 @@ function populateSettingsAndDesign() {
   if (layoutRadio) layoutRadio.checked = true;
   document.getElementById("designPrimaryColor").value = d.primaryColor || "#D49638";
   document.getElementById("designThemeMode").value = d.themeMode || "auto";
+  document.getElementById("designFontFamily").value = d.fontFamily || "Cairo";
   document.getElementById("designBorderRadius").value = d.borderRadius || "20px";
   document.getElementById("designFontScale").value = String(d.fontScale || "1");
   document.getElementById("designShowIncludes").checked = d.showIncludes !== false;
   document.getElementById("designShowFeatured").checked = d.showFeatured !== false;
+  document.getElementById("designShowBadges").checked = d.showBadges !== false;
+  document.getElementById("designShowSearch").checked = d.showSearch !== false;
+  updateLiveDesignPreview();
 }
 
-window.setDesignColor = (hex) => {
-  document.getElementById("designPrimaryColor").value = hex;
-};
+document.getElementById("resetDesignDefaultBtn").addEventListener("click", () => {
+  if (!isAdminAuthenticated) return;
+  const def = {
+    layout: "luxury",
+    primaryColor: "#D49638",
+    themeMode: "auto",
+    fontFamily: "Cairo",
+    borderRadius: "20px",
+    fontScale: 1,
+    showIncludes: true,
+    showFeatured: true,
+    showBadges: true,
+    showSearch: true
+  };
+  db.ref("restaurantInfo/design")
+    .set(def)
+    .then(() => showAdminToast("تمت استعادة التصميم الافتراضي"));
+});
 
 document.getElementById("saveDesignBtn").addEventListener("click", () => {
+  if (!isAdminAuthenticated) return;
   const selectedLayout = document.querySelector('input[name="designLayout"]:checked');
   const designPayload = {
     layout: selectedLayout ? selectedLayout.value : "luxury",
     primaryColor: document.getElementById("designPrimaryColor").value,
     themeMode: document.getElementById("designThemeMode").value,
+    fontFamily: document.getElementById("designFontFamily").value,
     borderRadius: document.getElementById("designBorderRadius").value,
     fontScale: Number(document.getElementById("designFontScale").value || 1),
     showIncludes: document.getElementById("designShowIncludes").checked,
-    showFeatured: document.getElementById("designShowFeatured").checked
+    showFeatured: document.getElementById("designShowFeatured").checked,
+    showBadges: document.getElementById("designShowBadges").checked,
+    showSearch: document.getElementById("designShowSearch").checked
   };
   db.ref("restaurantInfo/design")
     .set(designPayload)
@@ -275,20 +424,20 @@ function handleImageFileUpload(fileInputId, targetUrlInputId, previewImgId) {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const maxW = 900;
+        const maxW = 450;
         const scale = img.width > maxW ? maxW / img.width : 1;
         canvas.width = img.width * scale;
         canvas.height = img.height * scale;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const compressed = canvas.toDataURL("image/jpeg", 0.8);
+        const compressed = canvas.toDataURL("image/jpeg", 0.68);
         document.getElementById(targetUrlInputId).value = compressed;
         if (previewImgId) {
           const prev = document.getElementById(previewImgId);
           prev.src = compressed;
           prev.style.display = "block";
         }
-        showAdminToast("تم تجهيز الصورة بنجاح");
+        showAdminToast("تم ضغط وتجهيز الصورة بنجاح");
       };
       img.src = ev.target.result;
     };
@@ -300,8 +449,35 @@ handleImageFileUpload("uploadLogoFile", "setLogoUrl");
 handleImageFileUpload("uploadCoverFile", "setCoverUrl");
 handleImageFileUpload("uploadItemImgFile", "itemImgInput", "itemImgPreview");
 
-document.getElementById("settingsForm").addEventListener("submit", (e) => {
+document.getElementById("settingsForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (!isAdminAuthenticated) return;
+
+  const userField = document.getElementById("setAdminUsername");
+  const updatedUser = userField ? userField.value.replace(/[^0-9]/g, "").trim() : storedAdminAuth.username;
+  if (!/^01[0125][0-9]{8}$/.test(updatedUser)) {
+    alert("يرجى إدخال رقم هاتف مصري صحيح مكون من 11 رقم");
+    return;
+  }
+
+  const newPin = document.getElementById("setAdminPin").value.trim();
+  let updatedPassHash = storedAdminAuth.passHash;
+
+  if (newPin) {
+    if (newPin.length < 6) {
+      alert("يجب أن تتكون كلمة المرور الجديدة من 6 خانات على الأقل");
+      return;
+    }
+    updatedPassHash = await sha256Hex(newPin);
+  }
+
+  await db.ref("adminAuth").set({
+    username: updatedUser,
+    passHash: updatedPassHash
+  });
+  const newSig = await sha256Hex(`${updatedUser}:${updatedPassHash}`);
+  sessionStorage.setItem("admin_session_sig", newSig);
+
   const updated = {
     ...restaurantInfo,
     name: document.getElementById("setRestName").value.trim(),
@@ -319,12 +495,13 @@ document.getElementById("settingsForm").addEventListener("submit", (e) => {
     deliveryFee: Number(document.getElementById("setDeliveryFee").value || 0),
     prepTimeMinutes: Number(document.getElementById("setPrepTime").value || 20),
     promoCode: document.getElementById("setPromoCode").value.trim(),
-    promoDiscount: Number(document.getElementById("setPromoDiscount").value || 0),
-    adminPin: document.getElementById("setAdminPin").value.trim() || "1234"
+    promoDiscount: Number(document.getElementById("setPromoDiscount").value || 0)
   };
+  delete updated.adminPin;
+
   db.ref("restaurantInfo")
     .set(updated)
-    .then(() => showAdminToast("تم حفظ إعدادات المطعم بنجاح"));
+    .then(() => showAdminToast("تم حفظ الإعدادات وبيانات الدخول بنجاح"));
 });
 
 // ==========================================
@@ -350,6 +527,7 @@ function getStatusLabel(status) {
 }
 
 function renderOrders() {
+  if (!isAdminAuthenticated) return;
   const grid = document.getElementById("ordersGrid");
   const activeCount = allOrders.filter((o) => o.status !== "completed").length;
   document.getElementById("activeOrdersCount").textContent = activeCount;
@@ -438,12 +616,14 @@ function renderOrders() {
 }
 
 window.updateOrderStatus = (orderId, newStatus) => {
+  if (!isAdminAuthenticated) return;
   db.ref(`orders/${orderId}/status`)
     .set(newStatus)
     .then(() => showAdminToast("تم تحديث حالة الطلب"));
 };
 
 window.collectAndPrintOrder = (orderId) => {
+  if (!isAdminAuthenticated) return;
   const ord = allOrders.find((o) => o.orderId === orderId);
   if (!ord) return;
   db.ref(`orders/${orderId}/status`).set("completed");
@@ -452,16 +632,18 @@ window.collectAndPrintOrder = (orderId) => {
 };
 
 window.printOrderById = (orderId) => {
+  if (!isAdminAuthenticated) return;
   const ord = allOrders.find((o) => o.orderId === orderId);
   if (ord) printThermalReceiptAdmin(ord);
 };
 
-// إشعارات نداء الويتر
 window.dismissWaiterCall = (callId) => {
+  if (!isAdminAuthenticated) return;
   db.ref(`orders/${callId}`).remove();
 };
 
 function renderWaiterCallsBar(calls) {
+  if (!isAdminAuthenticated) return;
   const container = document.getElementById("waiterCallsContainer");
   if (!container) return;
   if (calls.length === 0) {
@@ -481,9 +663,10 @@ function renderWaiterCallsBar(calls) {
 }
 
 // ==========================================
-// 2. الترابيزات + إضافة طلبات يدوية من الكاشير + التحصيل والطباعة الفورية
+// 2. الترابيزات + البحث الفوري للإضافة + تعديل الكميات
 // ==========================================
 document.getElementById("saveTablesCountBtn").addEventListener("click", () => {
+  if (!isAdminAuthenticated) return;
   const count = Math.max(1, Math.min(100, Number(document.getElementById("totalTablesInput").value || 16)));
   db.ref("restaurantInfo/totalTables")
     .set(count)
@@ -496,6 +679,7 @@ function getBaseMenuUrl() {
 }
 
 function renderTablesGrid() {
+  if (!isAdminAuthenticated) return;
   const grid = document.getElementById("tablesGrid");
   const total = Number(restaurantInfo.totalTables || 16);
   const openDineInOrders = allOrders.filter((o) => o.orderType === "dinein" && o.status !== "completed");
@@ -540,7 +724,37 @@ function renderTablesGrid() {
 
 let activeModalTableNum = null;
 
+window.renderCashierSearchResults = (tableNum) => {
+  const box = document.getElementById("cashierQuickResults");
+  const searchEl = document.getElementById("cashierQuickSearch");
+  if (!box || !searchEl) return;
+  const q = searchEl.value.trim().toLowerCase();
+  const matches = menuItems
+    .filter((m) => m.available !== false && (!q || m.name.toLowerCase().includes(q) || (m.category && m.category.toLowerCase().includes(q))))
+    .slice(0, 12);
+
+  if (matches.length === 0) {
+    box.innerHTML = `<div style="padding:10px; text-align:center; font-size:0.82rem; color:#64748b;">لا توجد أصناف مطابقة</div>`;
+    return;
+  }
+
+  box.innerHTML = matches
+    .map(
+      (m) => `
+      <div class="cashier-result-row">
+        <div>
+          <strong>${m.name}</strong>
+          <span style="color:#b45309; font-weight:800; margin-right:6px;">(${m.price} ج.م)</span>
+        </div>
+        <button type="button" onclick="quickAddMenuItemToTable(${tableNum}, ${m.id})">+ إضافة</button>
+      </div>
+    `
+    )
+    .join("");
+};
+
 window.openTableTabModal = (tableNum) => {
+  if (!isAdminAuthenticated) return;
   activeModalTableNum = Number(tableNum);
   const orders = allOrders.filter(
     (o) => o.orderType === "dinein" && o.status !== "completed" && Number(o.tableNumber) === activeModalTableNum
@@ -549,8 +763,8 @@ window.openTableTabModal = (tableNum) => {
 
   const allItems = [];
   orders.forEach((o) => {
-    (o.items || []).forEach((it) => {
-      allItems.push({ ...it, orderNumber: o.orderNumber });
+    (o.items || []).forEach((it, idx) => {
+      allItems.push({ ...it, orderId: o.orderId, itemIndex: idx });
     });
   });
 
@@ -560,41 +774,44 @@ window.openTableTabModal = (tableNum) => {
   const vatAmount = Math.round((subTotal * vatRate) / 100);
   const grand = orders.length > 0 ? orders.reduce((s, o) => s + Number(o.grandTotal || 0), 0) : 0;
 
-  const menuOptionsHtml = menuItems
-    .filter((m) => m.available !== false)
-    .map((m) => `<option value="${m.id}">${m.name} (${m.price} ج.م)</option>`)
-    .join("");
-
   document.getElementById("tableTabContent").innerHTML = `
     <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:14px; padding:12px; margin-bottom:14px;">
-      <strong style="display:block; font-size:0.86rem; margin-bottom:8px; color:#0f172a;">+ إضافة طلب أو صنف لحساب الترابيزة (من الكاشير):</strong>
+      <strong style="display:block; font-size:0.86rem; margin-bottom:8px; color:#0f172a;">+ إضافة سريع لحساب الترابيزة (بحث فوري في المنيو):</strong>
       
-      <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
-        <select id="cashierMenuSelect" style="flex:1; min-width:150px; max-width:100%; padding:8px; border-radius:9px; border:1px solid #cbd5e1; font-size:0.83rem;">
-          <option value="">-- اختر صنف من المنيو --</option>
-          ${menuOptionsHtml}
-        </select>
-        <input type="number" id="cashierMenuQty" value="1" min="1" max="50" style="width:52px; padding:8px; border-radius:9px; border:1px solid #cbd5e1; text-align:center; font-weight:800;" />
-        <button type="button" class="btn-act blue" style="white-space:nowrap;" onclick="addMenuItemToTable(${activeModalTableNum})">إضافة</button>
-      </div>
+      <input
+        type="text"
+        id="cashierQuickSearch"
+        placeholder="اكتب اسم الصنف للبحث السريع (مثال: كفتة، فرخة، طاجن...)"
+        oninput="renderCashierSearchResults(${activeModalTableNum})"
+        style="width:100%; padding:9px 12px; border-radius:9px; border:1px solid #cbd5e1; font-size:0.84rem; background:#fff;"
+      />
+      <div id="cashierQuickResults" class="cashier-quick-results"></div>
 
-      <div style="display:flex; gap:6px; flex-wrap:wrap;">
-        <input type="text" id="cashierCustomName" placeholder="أو إضافة خاصة (عيش، سلطة...)" style="flex:1; min-width:140px; padding:8px; border-radius:9px; border:1px solid #cbd5e1; font-size:0.82rem;" />
-        <input type="number" id="cashierCustomPrice" placeholder="السعر" min="1" style="width:66px; padding:8px; border-radius:9px; border:1px solid #cbd5e1; text-align:center;" />
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px dashed #cbd5e1;">
+        <input type="text" id="cashierCustomName" placeholder="إضافة خارجية (عيش، سلطة، مشروب...)" style="flex:1; min-width:150px; padding:8px 10px; border-radius:9px; border:1px solid #cbd5e1; font-size:0.82rem; background:#fff;" />
+        <input type="number" id="cashierCustomPrice" placeholder="السعر" min="1" style="width:74px; padding:8px; border-radius:9px; border:1px solid #cbd5e1; text-align:center; background:#fff;" />
         <button type="button" class="btn-act purple" style="white-space:nowrap;" onclick="addCustomExtraToTable(${activeModalTableNum})">+ إضافة</button>
       </div>
     </div>
 
-    <div style="max-height:210px; overflow-y:auto; margin-bottom:10px;">
+    <div style="max-height:200px; overflow-y:auto; margin-bottom:10px;">
       ${
         allItems.length === 0
           ? `<p style="text-align:center; color:#64748b; padding:14px;">لا توجد أصناف مسجلة على هذه الترابيزة بعد</p>`
           : allItems
               .map(
                 (it) => `
-            <div style="display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px dashed #e2e8f0; font-size:0.88rem;">
-              <span>${it.name} × ${it.qty}</span>
-              <strong>${it.total} ج.م</strong>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 4px; border-bottom:1px dashed #e2e8f0; font-size:0.86rem;">
+              <div style="flex:1;">
+                <strong>${it.name}</strong>
+                <div style="font-size:0.75rem; color:#64748b;">${it.price} ج.م × ${it.qty} = <strong>${it.total} ج.م</strong></div>
+              </div>
+              <div class="tab-item-controls">
+                <button type="button" class="qty-mini-btn" onclick="changeTableItemQty('${it.orderId}', ${it.itemIndex}, 1, ${activeModalTableNum})">+</button>
+                <span style="min-width:18px; text-align:center; font-weight:800;">${it.qty}</span>
+                <button type="button" class="qty-mini-btn" onclick="changeTableItemQty('${it.orderId}', ${it.itemIndex}, -1, ${activeModalTableNum})">-</button>
+                <button type="button" class="qty-mini-btn del" onclick="changeTableItemQty('${it.orderId}', ${it.itemIndex}, -999, ${activeModalTableNum})">✕</button>
+              </div>
             </div>
           `
               )
@@ -620,10 +837,58 @@ window.openTableTabModal = (tableNum) => {
         : ""
     }
   `;
+
+  renderCashierSearchResults(activeModalTableNum);
   document.getElementById("tableTabModal").classList.add("active");
 };
 
+window.changeTableItemQty = (orderId, itemIndex, delta, tableNum) => {
+  if (!isAdminAuthenticated) return;
+  const order = allOrders.find((o) => o.orderId === orderId);
+  if (!order || !order.items) return;
+
+  const updatedItems = [...order.items];
+  const target = updatedItems[itemIndex];
+  if (!target) return;
+
+  const nextQty = target.qty + delta;
+  if (nextQty <= 0) {
+    updatedItems.splice(itemIndex, 1);
+  } else {
+    updatedItems[itemIndex] = {
+      ...target,
+      qty: nextQty,
+      total: nextQty * Number(target.price)
+    };
+  }
+
+  if (updatedItems.length === 0) {
+    db.ref(`orders/${orderId}`)
+      .remove()
+      .then(() => setTimeout(() => openTableTabModal(tableNum), 180));
+    return;
+  }
+
+  const vatEnabled = restaurantInfo.vatEnabled !== false;
+  const vatRate = vatEnabled ? Number(restaurantInfo.vatRate || 14) : 0;
+  const subTotal = updatedItems.reduce((s, i) => s + Number(i.total), 0);
+  const vatAmount = Math.round((subTotal * vatRate) / 100);
+  const discount = Number(order.discount || 0);
+  const grandTotal = Math.max(0, subTotal + vatAmount - discount);
+
+  db.ref(`orders/${orderId}`)
+    .update({
+      items: updatedItems,
+      subTotal,
+      vatRate,
+      vatAmount,
+      grandTotal
+    })
+    .then(() => setTimeout(() => openTableTabModal(tableNum), 180));
+};
+
 function appendItemToTableOrder(tableNum, newItemObj) {
+  if (!isAdminAuthenticated) return;
   const openOrders = allOrders.filter(
     (o) => o.orderType === "dinein" && o.status !== "completed" && Number(o.tableNumber) === Number(tableNum)
   );
@@ -656,7 +921,7 @@ function appendItemToTableOrder(tableNum, newItemObj) {
       })
       .then(() => {
         showAdminToast(`تمت إضافة "${newItemObj.name}" لحساب ترابيزة ${tableNum}`);
-        setTimeout(() => openTableTabModal(tableNum), 200);
+        setTimeout(() => openTableTabModal(tableNum), 180);
       });
   } else {
     const orderId = `ord_${Date.now()}`;
@@ -691,26 +956,20 @@ function appendItemToTableOrder(tableNum, newItemObj) {
       .set(newOrder)
       .then(() => {
         showAdminToast(`تم فتح حساب وإضافة "${newItemObj.name}" لترابيزة ${tableNum}`);
-        setTimeout(() => openTableTabModal(tableNum), 200);
+        setTimeout(() => openTableTabModal(tableNum), 180);
       });
   }
 }
 
-window.addMenuItemToTable = (tableNum) => {
-  const itemId = document.getElementById("cashierMenuSelect").value;
-  const qty = Math.max(1, Number(document.getElementById("cashierMenuQty").value || 1));
-  if (!itemId) {
-    alert("اختر صنفاً من القائمة أولاً");
-    return;
-  }
+window.quickAddMenuItemToTable = (tableNum, itemId) => {
   const item = menuItems.find((m) => String(m.id) === String(itemId));
   if (!item) return;
   appendItemToTableOrder(tableNum, {
     id: item.id,
     name: item.name,
     price: Number(item.price),
-    qty,
-    total: Number(item.price) * qty
+    qty: 1,
+    total: Number(item.price)
   });
 };
 
@@ -731,6 +990,7 @@ window.addCustomExtraToTable = (tableNum) => {
 };
 
 window.closeTableAndPrintReceipt = (tableNum) => {
+  if (!isAdminAuthenticated) return;
   const orders = allOrders.filter(
     (o) => o.orderType === "dinein" && o.status !== "completed" && Number(o.tableNumber) === Number(tableNum)
   );
@@ -766,7 +1026,6 @@ document.getElementById("closeTableTabBtn").addEventListener("click", () => {
   document.getElementById("tableTabModal").classList.remove("active");
 });
 
-// طباعة QR مخصصة
 function parseTableNumbers(raw) {
   const nums = new Set();
   raw.split(",").forEach((part) => {
@@ -795,6 +1054,7 @@ document.getElementById("printCustomQrBtn").addEventListener("click", () => {
 });
 
 window.printTablesQr = (tableNumbers) => {
+  if (!isAdminAuthenticated) return;
   const baseUrl = getBaseMenuUrl();
   const win = window.open("", "_blank", "width=850,height=700");
   if (!win) {
@@ -841,11 +1101,12 @@ window.printTablesQr = (tableNumbers) => {
 };
 
 // ==========================================
-// 3. إدارة قائمة الطعام (Menu CRUD) + طباعة المنيو PDF نظيفة
+// 3. إدارة قائمة الطعام (Menu CRUD)
 // ==========================================
 document.getElementById("adminMenuSearch").addEventListener("input", renderAdminMenuTable);
 
 function renderAdminMenuTable() {
+  if (!isAdminAuthenticated) return;
   const q = document.getElementById("adminMenuSearch").value.trim().toLowerCase();
   document.getElementById("menuItemsCountBadge").textContent = menuItems.length;
   const tbody = document.getElementById("adminMenuTbody");
@@ -881,11 +1142,13 @@ function renderAdminMenuTable() {
 }
 
 window.toggleItemAvailability = (id) => {
+  if (!isAdminAuthenticated) return;
   const updated = menuItems.map((i) => (Number(i.id) === Number(id) ? { ...i, available: i.available === false } : i));
   db.ref("menuItems").set(updated);
 };
 
 window.deleteMenuItem = (id) => {
+  if (!isAdminAuthenticated) return;
   if (!confirm("هل أنت متأكد من حذف هذا الصنف؟")) return;
   const updated = menuItems.filter((i) => Number(i.id) !== Number(id));
   db.ref("menuItems")
@@ -905,6 +1168,7 @@ document.getElementById("openAddItemModalBtn").addEventListener("click", () => {
 document.getElementById("closeItemModalBtn").addEventListener("click", () => itemFormModal.classList.remove("active"));
 
 window.openEditItemModal = (id) => {
+  if (!isAdminAuthenticated) return;
   const item = menuItems.find((i) => Number(i.id) === Number(id));
   if (!item) return;
   document.getElementById("itemModalTitle").textContent = "تعديل الصنف";
@@ -929,6 +1193,7 @@ window.openEditItemModal = (id) => {
 
 document.getElementById("menuItemForm").addEventListener("submit", (e) => {
   e.preventDefault();
+  if (!isAdminAuthenticated) return;
   const editId = document.getElementById("editItemId").value;
   const payload = {
     id: editId ? Number(editId) : Date.now(),
@@ -938,7 +1203,7 @@ document.getElementById("menuItemForm").addEventListener("submit", (e) => {
     badge: document.getElementById("itemBadgeInput").value.trim(),
     desc: document.getElementById("itemDescInput").value.trim(),
     includes: document.getElementById("itemIncludesInput").value.trim(),
-    img: document.getElementById("itemImgInput").value.trim() || "https://images.unsplash.com/photo-1544025162-d76694265947?w=800",
+    img: document.getElementById("itemImgInput").value.trim() || "https://images.unsplash.com/photo-1544025162-d76694265947?w=400",
     available: document.getElementById("itemAvailInput").checked
   };
 
@@ -958,14 +1223,15 @@ document.getElementById("menuItemForm").addEventListener("submit", (e) => {
 });
 
 document.getElementById("seedDefaultMenuBtn").addEventListener("click", () => {
+  if (!isAdminAuthenticated) return;
   if (!confirm("هل تريد استعادة قائمة الطعام الافتراضية الكاملة (72 صنف)؟")) return;
   db.ref("menuItems")
     .set(DEFAULT_MENU_ITEMS)
     .then(() => showAdminToast("تمت استعادة الـ 72 صنف بنجاح"));
 });
 
-// طباعة المنيو PDF نظيفة (الأصناف + الصور + الأسعار فقط)
 document.getElementById("printMenuPdfBtn").addEventListener("click", () => {
+  if (!isAdminAuthenticated) return;
   const win = window.open("", "_blank", "width=900,height=750");
   if (!win) return;
 
@@ -1054,6 +1320,7 @@ function getFilteredReportOrders() {
 }
 
 function renderReports() {
+  if (!isAdminAuthenticated) return;
   const list = getFilteredReportOrders();
   const totalRev = list.reduce((s, o) => s + Number(o.grandTotal || 0), 0);
   const count = list.length;
@@ -1091,6 +1358,7 @@ function renderReports() {
 }
 
 document.getElementById("exportExcelBtn").addEventListener("click", () => {
+  if (!isAdminAuthenticated) return;
   const list = getFilteredReportOrders();
   if (typeof XLSX === "undefined") {
     alert("مكتبة Excel قيد التحميل");
@@ -1116,6 +1384,7 @@ document.getElementById("exportExcelBtn").addEventListener("click", () => {
 });
 
 document.getElementById("exportReportPdfBtn").addEventListener("click", () => {
+  if (!isAdminAuthenticated) return;
   const list = getFilteredReportOrders();
   const totalRev = list.reduce((s, o) => s + Number(o.grandTotal || 0), 0);
   const win = window.open("", "_blank", "width=900,height=750");
@@ -1188,8 +1457,10 @@ db.ref("restaurantInfo").on("value", (snap) => {
   if (snap.exists()) {
     restaurantInfo = { ...DEFAULT_RESTAURANT_INFO, ...snap.val() };
   }
-  populateSettingsAndDesign();
-  renderTablesGrid();
+  if (isAdminAuthenticated) {
+    populateSettingsAndDesign();
+    renderTablesGrid();
+  }
 });
 
 db.ref("menuItems").on("value", (snap) => {
@@ -1200,7 +1471,9 @@ db.ref("menuItems").on("value", (snap) => {
     menuItems = [...DEFAULT_MENU_ITEMS];
     db.ref("menuItems").set(menuItems);
   }
-  renderAdminMenuTable();
+  if (isAdminAuthenticated) {
+    renderAdminMenuTable();
+  }
 });
 
 let initialOrdersLoaded = false;
@@ -1213,7 +1486,7 @@ db.ref("orders").on("value", (snap) => {
   const waiterCalls = rawList.filter((o) => o.orderType === "waiter_call" && o.status === "pending");
   const realOrders = rawList.filter((o) => o.orderType !== "waiter_call");
 
-  if (initialOrdersLoaded && (realOrders.length > allOrders.length || waiterCalls.length > lastWaiterCount)) {
+  if (initialOrdersLoaded && isAdminAuthenticated && (realOrders.length > allOrders.length || waiterCalls.length > lastWaiterCount)) {
     playOrderBell();
     showAdminToast(waiterCalls.length > lastWaiterCount ? "نداء كابتن جديد من ترابيزة!" : "وصل طلب جديد الآن!");
   }
@@ -1222,8 +1495,10 @@ db.ref("orders").on("value", (snap) => {
   allOrders = realOrders;
   initialOrdersLoaded = true;
 
-  renderWaiterCallsBar(waiterCalls);
-  renderOrders();
-  renderTablesGrid();
-  renderReports();
+  if (isAdminAuthenticated) {
+    renderWaiterCallsBar(waiterCalls);
+    renderOrders();
+    renderTablesGrid();
+    renderReports();
+  }
 });

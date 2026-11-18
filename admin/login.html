@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تسجيل الدخول | قصر المشويات</title>
+  <link rel="icon" type="image/svg+xml" href="../logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      background: #0f1115;
+      color: #f1f5f9;
+    }
+
+    .form-side {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: stretch;
+      padding: 48px 11%;
+      background: #0f1115;
+    }
+
+    .form-container {
+      width: 100%;
+      max-width: 390px;
+      margin: 0 auto;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 12px;
+      margin-bottom: 34px;
+    }
+
+    .brand-row img {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1px solid rgba(212, 150, 56, 0.45);
+    }
+
+    .brand-row .brand-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-row strong {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+
+    .brand-row span {
+      font-size: 0.76rem;
+      color: #d49638;
+      font-weight: 700;
+    }
+
+    .form-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 6px;
+      text-align: right;
+    }
+
+    .form-sub {
+      font-size: 0.86rem;
+      color: #8b949e;
+      margin-bottom: 28px;
+      text-align: right;
+    }
+
+    .field {
+      margin-bottom: 18px;
+      text-align: right;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.83rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      margin-bottom: 7px;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-wrap input {
+      width: 100%;
+      height: 48px;
+      background: #171a21;
+      border: 1px solid #282d37;
+      border-radius: 11px;
+      padding: 0 14px 0 42px;
+      color: #ffffff;
+      font-size: 0.96rem;
+      font-weight: 600;
+      direction: ltr;
+      text-align: right;
+      outline: none;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .input-wrap input:focus {
+      border-color: #d49638;
+      background: #1b1f27;
+    }
+
+    .eye-btn {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #7d8590;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 4px;
+      transition: color 0.15s ease;
+    }
+
+    .eye-btn:hover {
+      color: #d49638;
+    }
+
+    .submit-btn {
+      width: 100%;
+      height: 48px;
+      margin-top: 8px;
+      background: #d49638;
+      color: #0f1115;
+      border: none;
+      border-radius: 11px;
+      font-size: 0.96rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+      background: #e1a546;
+    }
+
+    .submit-btn:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status-msg {
+      display: none;
+      margin-top: 14px;
+      font-size: 0.83rem;
+      font-weight: 700;
+      color: #f87171;
+      text-align: right;
+    }
+
+    .footer-link {
+      margin-top: 28px;
+      font-size: 0.82rem;
+      text-align: right;
+    }
+
+    .footer-link a {
+      color: #8b949e;
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+
+    .footer-link a:hover {
+      color: #d49638;
+    }
+
+    .visual-side {
+      position: relative;
+      background: #0b0d10 url('https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1200&q=80') center/cover no-repeat;
+    }
+
+    .visual-side::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(15, 17, 21, 0.94) 0%, rgba(15, 17, 21, 0.3) 55%, rgba(15, 17, 21, 0.45) 100%);
+    }
+
+    .visual-caption {
+      position: absolute;
+      bottom: 44px;
+      right: 44px;
+      left: 44px;
+      z-index: 2;
+      text-align: right;
+    }
+
+    .visual-caption h2 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .visual-caption p {
+      font-size: 0.88rem;
+      color: #cbd5e1;
+    }
+
+    @media (max-width: 860px) {
+      body {
+        grid-template-columns: 1fr;
+      }
+      .visual-side {
+        display: none;
+      }
+      .form-side {
+        padding: 36px 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <section class="form-side">
+    <div class="form-container">
+      <div class="brand-row">
+        <img src="../logo.svg" alt="قصر المشويات" />
+        <div class="brand-text">
+          <strong>قصر المشويات</strong>
+          <span>بوابة الإدارة والكاشير</span>
+        </div>
+      </div>
+
+      <h1 class="form-title">تسجيل الدخول</h1>
+      <p class="form-sub">أدخل بيانات حساب الإدارة للمتابعة إلى لوحة التحكم</p>
+
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="phoneInput">رقم الهاتف</label>
+          <div class="input-wrap">
+            <input type="tel" id="phoneInput" maxlength="11" inputmode="numeric" autocomplete="username" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="passInput">كلمة المرور</label>
+          <div class="input-wrap">
+            <input type="password" id="passInput" maxlength="20" autocomplete="current-password" required />
+            <button type="button" class="eye-btn" id="toggleEyeBtn" aria-label="إظهار أو إخفاء كلمة المرور">
+              <svg id="eyeIcon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="submitBtn" class="submit-btn">تسجيل الدخول</button>
+        <div id="statusMsg" class="status-msg"></div>
+      </form>
+
+      <div class="footer-link">
+        <a href="../menu.html">→ العودة إلى قائمة الطعام</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="visual-side">
+    <div class="visual-caption">
+      <h2>نظام إدارة الطلبات والكاشير</h2>
+      <p>متابعة الطلبات الحية، إدارة الترابيزات، والتقارير اليومية في مكان واحد.</p>
+    </div>
+  </section>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="../firebase-config.js"></script>
+  <script>
+    const ADMIN_PHONE = "01018622861";
+    const ADMIN_PASS = "20268855";
+
+    const phoneInput = document.getElementById("phoneInput");
+    const passInput = document.getElementById("passInput");
+    const toggleEyeBtn = document.getElementById("toggleEyeBtn");
+    const eyeIcon = document.getElementById("eyeIcon");
+    const submitBtn = document.getElementById("submitBtn");
+    const statusMsg = document.getElementById("statusMsg");
+
+    phoneInput.addEventListener("input", (e) => {
+      e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 11);
+    });
+
+    toggleEyeBtn.addEventListener("click", () => {
+      const hidden = passInput.type === "password";
+      passInput.type = hidden ? "text" : "password";
+      eyeIcon.innerHTML = hidden
+        ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>'
+        : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+    });
+
+    function showError(text) {
+      statusMsg.textContent = text;
+      statusMsg.style.display = "block";
+    }
+
+    async function sha256Hex(text) {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(text)));
+      return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    let currentAuth = null;
+
+    async function loadOrSyncAuth() {
+      const defaultHash = await sha256Hex(ADMIN_PASS);
+      const snap = await db.ref("adminAuth").once("value");
+
+      if (snap.exists() && snap.val().username && snap.val().passHash) {
+        currentAuth = snap.val();
+        if (currentAuth.passHash === "e48660770eb01d75c0640150030848636d78323e77c967a7e0e13987d6336e3b") {
+          currentAuth = { username: ADMIN_PHONE, passHash: defaultHash };
+          await db.ref("adminAuth").set(currentAuth);
+        }
+      } else {
+        currentAuth = { username: ADMIN_PHONE, passHash: defaultHash };
+        await db.ref("adminAuth").set(currentAuth);
+      }
+
+      const expectedSig = await sha256Hex(`${currentAuth.username}:${currentAuth.passHash}`);
+      if (sessionStorage.getItem("admin_session_sig") === expectedSig) {
+        window.location.replace("admin.html");
+      }
+    }
+
+    loadOrSyncAuth();
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      statusMsg.style.display = "none";
+
+      const phone = phoneInput.value.trim();
+      const pass = passInput.value.trim();
+
+      if (!phone || !pass) {
+        showError("يرجى إدخال رقم الهاتف وكلمة المرور");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "جاري الدخول...";
+
+      try {
+        if (!currentAuth) await loadOrSyncAuth();
+        const enteredHash = await sha256Hex(pass);
+
+        if (phone === currentAuth.username && enteredHash === currentAuth.passHash) {
+          const sig = await sha256Hex(`${currentAuth.username}:${currentAuth.passHash}`);
+          sessionStorage.setItem("admin_session_sig", sig);
+          window.location.replace("admin.html");
+        } else {
+          showError("رقم الهاتف أو كلمة المرور غير صحيحة");
+          passInput.value = "";
+          passInput.focus();
+          submitBtn.disabled = false;
+          submitBtn.textContent = "تسجيل الدخول";
+        }
+      } catch (err) {
+        showError("تعذر الاتصال بقاعدة البيانات، حاول مرة أخرى");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "تسجيل الدخول";
+      }
+    });
+  </script>
+</body>
+</html>

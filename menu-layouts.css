@@ -1,0 +1,133 @@
+/* menu-layouts.css - 10 أنماط عرض احترافية لمنيو العملاء */
+
+/* 1. Luxury Grid (الافتراضي) */
+body[data-layout="luxury"] .menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 18px;
+}
+
+/* 2. Compact List (القائمة السريعة المدمجة) */
+body[data-layout="compact"] .menu-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+body[data-layout="compact"] .menu-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 10px;
+  gap: 12px;
+}
+body[data-layout="compact"] .menu-card img {
+  width: 88px !important;
+  height: 88px !important;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+/* 3. 2-Column Mobile Grid (شبكة ثنائية زي تطبيقات الدليفري) */
+body[data-layout="grid2"] .menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+body[data-layout="grid2"] .menu-card img {
+  height: 130px !important;
+}
+
+/* 4. Cinema Overlay (الصورة خلفية كاملة والنص فوقها) */
+body[data-layout="overlay"] .menu-card {
+  position: relative;
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+body[data-layout="overlay"] .menu-card img {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  z-index: 0;
+}
+body[data-layout="overlay"] .menu-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(10, 12, 16, 0.96) 15%, rgba(10, 12, 16, 0.25) 100%);
+  z-index: 1;
+}
+body[data-layout="overlay"] .menu-card > *:not(img) {
+  position: relative;
+  z-index: 2;
+  color: #ffffff !important;
+}
+
+/* 5. Editorial Split (مقسم أفقي عريض) */
+body[data-layout="editorial"] .menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+body[data-layout="editorial"] .menu-card {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  overflow: hidden;
+}
+body[data-layout="editorial"] .menu-card img {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 145px;
+  object-fit: cover;
+}
+
+/* 6. Square Poster (بوستر مربع) */
+body[data-layout="poster"] .menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+body[data-layout="poster"] .menu-card img {
+  aspect-ratio: 1 / 1;
+  height: auto !important;
+}
+
+/* 7. Classic Paper Menu (كلاسيكي بدون صور) */
+body[data-layout="classic"] .menu-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+body[data-layout="classic"] .menu-card img {
+  display: none !important;
+}
+body[data-layout="classic"] .menu-card {
+  border-bottom: 1.5px dashed rgba(212, 150, 56, 0.45);
+  padding: 14px 16px;
+}
+
+/* 8. Modern Pill (كبسولة عصرية دائرية) */
+body[data-layout="pill"] .menu-card {
+  border-radius: 34px !important;
+  padding: 12px;
+}
+body[data-layout="pill"] .menu-card img {
+  border-radius: 26px !important;
+}
+
+/* 9. Chef Spotlight (بطاقة الشيف بإطار مميز) */
+body[data-layout="spotlight"] .menu-card {
+  border: 2px solid var(--primary-color, #D49638) !important;
+  box-shadow: 0 10px 26px rgba(212, 150, 56, 0.14);
+}
+
+/* 10. Minimal Clean (بسيط ومسطح) */
+body[data-layout="minimal"] .menu-card {
+  box-shadow: none !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  background: transparent !important;
+}

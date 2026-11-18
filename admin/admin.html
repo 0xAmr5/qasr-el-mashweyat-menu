@@ -2,51 +2,43 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>لوحة الإدارة والكاشير | نظام المطعم</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة الإدارة والكاشير | قصر المشويات</title>
   <link rel="icon" type="image/svg+xml" href="../logo.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=35" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    if (!sessionStorage.getItem("admin_session_sig")) {
+      window.location.replace("login.html");
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
 
-  <!-- شاشة قفل الكاشير -->
-  <div class="pin-overlay" id="pinOverlay">
-    <div class="pin-card">
-      <img src="../logo.svg" style="width:72px; height:72px; border-radius:18px; margin-bottom:10px;" alt="Logo" />
-      <h2>دخول لوحة الإدارة والكاشير</h2>
-      <p>أدخل الرقم السري للمتابعة (الافتراضي: 1234)</p>
-      <input type="password" inputmode="numeric" maxlength="6" id="pinInput" placeholder="••••" />
-      <button type="button" id="unlockBtn">تسجيل الدخول</button>
-      <p id="pinError" style="color:#ef4444; font-size:0.82rem; font-weight:800; margin-top:8px; display:none;">الرقم السري غير صحيح</p>
-    </div>
-  </div>
-
   <div class="admin-layout">
-    <!-- القائمة الجانبية (Sidebar) -->
+    <!-- القائمة الجانبية -->
     <aside class="admin-sidebar" id="adminSidebar">
       <div class="sidebar-brand">
         <img src="../logo.svg" id="adminHeaderLogo" alt="Logo" />
         <div>
-          <h1 id="adminRestTitle">قصر المشويات</h1>
-          <small>نظام الكاشير والإدارة</small>
+          <h3 id="adminRestTitle">قصر المشويات</h3>
+          <span>نظام الكاشير والإدارة</span>
         </div>
       </div>
 
       <nav class="sidebar-nav">
         <button type="button" class="side-link active" data-tab="orders">
           <span>الطلبات المباشرة</span>
-          <span class="badge-pill" id="activeOrdersCount">0</span>
+          <strong class="badge-pill" id="activeOrdersCount">0</strong>
         </button>
         <button type="button" class="side-link" data-tab="tables">
           <span>الترابيزات وأكواد QR</span>
         </button>
         <button type="button" class="side-link" data-tab="menu">
           <span>إدارة قائمة الطعام</span>
+          <strong class="badge-pill" id="menuItemsCountBadge">0</strong>
         </button>
         <button type="button" class="side-link" data-tab="design">
           <span>تصميم وهوية المنيو</span>
@@ -60,411 +52,535 @@
       </nav>
 
       <div class="sidebar-footer">
-        <label class="status-switch-box">
+        <label class="store-toggle-box">
           <input type="checkbox" id="storeOpenToggle" checked />
           <span id="storeOpenLabel">المطعم مفتوح الآن</span>
         </label>
-        <button type="button" class="side-action-btn" id="enableSoundBtn">تفعيل صوت التنبيهات</button>
-        <a href="../menu.html" target="_blank" class="side-action-btn gold">فتح المنيو للعملاء</a>
+        <button type="button" id="enableSoundBtn" class="btn-sound-enable">تفعيل صوت التنبيهات</button>
+        <button type="button" id="lockAdminNowBtn" class="btn-sound-enable" style="background:#ef4444; color:#fff; border:none;">تسجيل الخروج</button>
+        <a href="../menu.html" target="_blank" class="btn-preview-menu">فتح المنيو للعملاء ↗</a>
       </div>
     </aside>
 
     <!-- المحتوى الرئيسي -->
-    <div class="admin-main-area">
-      <div class="mobile-admin-bar">
-        <button type="button" id="toggleSidebarBtn" class="hamburger-btn">☰ القائمة</button>
-        <strong id="mobilePageTitle">الطلبات المباشرة</strong>
-        <a href="../menu.html" target="_blank" class="btn-primary-sm" style="text-decoration:none;">المنيو</a>
-      </div>
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <button type="button" id="toggleSidebarBtn" class="btn-hamburger">☰ القائمة</button>
+        <h2 id="mobilePageTitle">الطلبات المباشرة</h2>
+        <a href="../menu.html" target="_blank" class="topbar-menu-link">المنيو ↗</a>
+      </header>
 
-      <!-- إشعارات نداء الويتر -->
-      <div id="waiterCallsContainer" class="waiter-alerts-bar"></div>
+      <div id="waiterCallsContainer" class="waiter-calls-bar"></div>
 
-      <main class="admin-container">
-
-        <!-- 1. الطلبات -->
-        <div class="tab-panel active" id="tab-orders">
-          <div class="panel-header-flex">
-            <div>
-              <h2>إدارة الطلبات الحية</h2>
-              <p class="sub-hint">متابعة فورية لطلبات الصالة والدليفري</p>
-            </div>
-            <div class="orders-subfilters">
-              <button type="button" class="filter-chip active" data-filter="active">النشطة</button>
-              <button type="button" class="filter-chip" data-filter="dinein">الصالة</button>
-              <button type="button" class="filter-chip" data-filter="delivery">الدليفري</button>
-              <button type="button" class="filter-chip" data-filter="completed">المكتملة</button>
-            </div>
+      <!-- 1. الطلبات المباشرة -->
+      <section class="tab-panel active" id="tab-orders">
+        <div class="panel-header">
+          <div>
+            <h2>إدارة الطلبات الحية</h2>
+            <p>استقبال طلبات الترابيزات والدليفري وتحديث حالتها وطباعة الفواتير</p>
           </div>
-          <div class="orders-grid" id="ordersGrid"></div>
+          <div class="orders-subfilters">
+            <button type="button" class="filter-chip active" data-filter="active">النشطة الآن</button>
+            <button type="button" class="filter-chip" data-filter="dinein">صالة وترابيزات</button>
+            <button type="button" class="filter-chip" data-filter="delivery">دليفري</button>
+            <button type="button" class="filter-chip" data-filter="completed">المكتملة</button>
+          </div>
         </div>
-
-        <!-- 2. الترابيزات والـ QR -->
-        <div class="tab-panel" id="tab-tables">
-          <div class="panel-header-flex">
-            <div>
-              <h2>إدارة الترابيزات وأكواد QR</h2>
-              <p class="sub-hint">اكتب أرقام الترابيزات المطلوب طباعة كروت QR لها (مثال: 1,4,7,11 أو 1-8)</p>
-            </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-              <input type="number" id="totalTablesInput" min="1" max="100" value="16" style="width:72px; padding:8px; border-radius:10px; border:1px solid #cbd5e1; text-align:center; font-weight:900;" />
-              <button type="button" class="btn-outline" id="saveTablesCountBtn">تحديث العدد</button>
-            </div>
-          </div>
-
-          <div class="qr-quick-print-box">
-            <div style="flex:1; min-width:240px;">
-              <label style="display:block; font-size:0.82rem; font-weight:900; margin-bottom:4px;">اكتب أرقام الترابيزات لاستخراج وطباعة الـ QR:</label>
-              <input type="text" id="qrNumbersInput" placeholder="مثال: 1,4,7,11 أو اكتب 1-10" style="width:100%; padding:10px 14px; border-radius:10px; border:1px solid #cbd5e1; font-weight:800;" />
-            </div>
-            <button type="button" class="btn-primary-sm" id="printCustomQrBtn" style="padding:11px 20px;">استخراج وطباعة QR</button>
-          </div>
-
-          <div class="tables-grid" id="tablesGrid"></div>
+        <div class="orders-grid" id="ordersGrid">
+          <div class="empty-box">جاري تحميل الطلبات...</div>
         </div>
+      </section>
 
-        <!-- 3. إدارة المنيو -->
-        <div class="tab-panel" id="tab-menu">
-          <div class="panel-header-flex">
-            <div>
-              <h2>إدارة أصناف قائمة الطعام (<span id="menuItemsCountBadge">0</span> صنف)</h2>
-              <p class="sub-hint">إضافة وتعديل الأصناف والأسعار وطباعة المنيو الورقية</p>
-            </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button type="button" class="btn-outline" id="printMenuPdfBtn">طباعة المنيو PDF</button>
-              <button type="button" class="btn-outline" id="seedDefaultMenuBtn">استعادة القائمة الافتراضية (72 صنف)</button>
-              <button type="button" class="btn-primary-sm" id="openAddItemModalBtn">+ إضافة صنف جديد</button>
-            </div>
+      <!-- 2. الترابيزات وأكواد QR -->
+      <section class="tab-panel" id="tab-tables">
+        <div class="panel-header">
+          <div>
+            <h2>إدارة الترابيزات وأكواد QR</h2>
+            <p>متابعة الحساب المفتوح لكل ترابيزة، إضافة أصناف يدوياً، أو طباعة أكواد QR</p>
           </div>
-
-          <div style="margin-bottom:14px;">
-            <input type="text" id="adminMenuSearch" placeholder="ابحث في المنيو بالاسم أو القسم..." style="width:100%; max-width:420px; padding:10px 14px; border-radius:12px; border:1px solid #cbd5e1;" />
-          </div>
-
-          <div class="table-responsive">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>الصورة</th>
-                  <th>اسم الصنف والوصف</th>
-                  <th>القسم</th>
-                  <th>السعر</th>
-                  <th>الحالة</th>
-                  <th>إجراءات</th>
-                </tr>
-              </thead>
-              <tbody id="adminMenuTbody"></tbody>
-            </table>
+          <div class="tables-controls-row">
+            <label style="font-weight:800; font-size:0.85rem;">عدد الترابيزات:</label>
+            <input type="number" id="totalTablesInput" min="1" max="100" value="16" class="small-num-input" />
+            <button type="button" id="saveTablesCountBtn" class="btn-act blue">حفظ العدد</button>
           </div>
         </div>
 
-        <!-- 4. تصميم المنيو -->
-        <div class="tab-panel" id="tab-design">
-          <div class="panel-header-flex">
-            <div>
-              <h2>تصميم وهوية المنيو</h2>
-              <p class="sub-hint">تحكم كامل في شكل بطاقات الطعام والألوان والمظهر الافتراضي</p>
-            </div>
-            <a href="../menu.html" target="_blank" class="btn-outline" style="text-decoration:none; display:inline-flex; align-items:center;">معاينة المنيو الحية</a>
-          </div>
+        <div class="qr-print-bar">
+          <input type="text" id="qrNumbersInput" placeholder="أرقام ترابيزات للطباعة (مثال: 1,4,7 أو 1-8 — اتركه فارغاً لطباعة الكل)" />
+          <button type="button" id="printCustomQrBtn" class="btn-act green">طباعة أكواد QR</button>
+        </div>
 
-          <div class="cards-grid-2">
-            <div class="form-card">
-              <h3>1. تخطيط بطاقات الطعام (8 قوالب)</h3>
-              <div class="layout-selector-grid" id="layoutPresetsGrid" style="grid-template-columns:repeat(auto-fill, minmax(145px, 1fr));">
-                <label class="layout-option">
-                  <input type="radio" name="designLayout" value="luxury" />
-                  <div class="layout-box"><strong>فاخر (Luxury)</strong><span>3 أعمدة بصور كبيرة</span></div>
-                </label>
-                <label class="layout-option">
-                  <input type="radio" name="designLayout" value="modern" />
-                  <div class="layout-box"><strong>شبكة عصرية</strong><span>4 أعمدة مكثفة</span></div>
-                </label>
-                <label class="layout-option">
-                  <input type="radio" name="designLayout" value="magazine" />
-                  <div class="layout-box"><strong>مجلة مصورة</strong><span>صورة جانبية عريضة</span></div>
-                </label>
-                <label class="layout-option">
-                  <input type="radio" name="designLayout" value="compact" />
-                  <div class="layout-box"><strong>قائمة مدمجة</strong><span>صورة صغيرة + نص</span></div>
-                </label>
-                <label class="layout-option">
-                  <input type="radio" name="designLayout" value="royal" />
-                  <div class="layout-box"><strong>أطباق ملكية</strong><span>صور دائرية بإطار</span></div>
-                </label>
-                <label class="layout-option">
-                  <input type="radio" name="designLayout" value="overlay" />
-                  <div class="layout-box"><strong>صور كاملة</strong><span>النص فوق الصورة</span></div>
-                </label>
-                <label class="layout-option">
-                  <input type="radio" name="designLayout" value="bistro" />
-                  <div class="layout-box"><strong>بيسترو كلاسيك</strong><span>عمودين متوازنين</span></div>
-                </label>
-                <label class="layout-option">
-                  <input type="radio" name="designLayout" value="minimal" />
-                  <div class="layout-box"><strong>نصوص فقط</strong><span>بدون صور لسرعة التصفح</span></div>
-                </label>
+        <div class="tables-grid" id="tablesGrid"></div>
+      </section>
+
+      <!-- 3. إدارة قائمة الطعام -->
+      <section class="tab-panel" id="tab-menu">
+        <div class="panel-header">
+          <div>
+            <h2>إدارة قائمة الطعام والأصناف</h2>
+            <p>إضافة أصناف جديدة، تعديل الأسعار، إيقاف صنف نفدت كميته، أو طباعة المنيو PDF</p>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" id="openAddItemModalBtn" class="btn-act green">+ إضافة صنف جديد</button>
+            <button type="button" id="printMenuPdfBtn" class="btn-act blue">طباعة المنيو PDF</button>
+            <button type="button" id="seedDefaultMenuBtn" class="btn-act gray">استعادة القائمة الافتراضية</button>
+          </div>
+        </div>
+
+        <div class="search-bar-admin">
+          <input type="text" id="adminMenuSearch" placeholder="ابحث باسم الصنف أو القسم..." />
+        </div>
+
+        <div class="table-responsive-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>الصورة</th>
+                <th>اسم الصنف والوصف</th>
+                <th>القسم</th>
+                <th>السعر</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="adminMenuTbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 4. تصميم وهوية المنيو (10 أنماط عرض مختلفة) -->
+      <section class="tab-panel" id="tab-design">
+        <div class="panel-header">
+          <div>
+            <h2>تخصيص تصميم وهوية المنيو</h2>
+            <p>اختر من بين 10 أنماط عرض احترافية، وعدّل الألوان والخطوط والوضع الليلي للعملاء</p>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" id="resetDesignDefaultBtn" class="btn-act gray">استعادة الافتراضي</button>
+            <button type="button" id="saveDesignBtn" class="btn-act green">حفظ ونشر التصميم</button>
+          </div>
+        </div>
+
+        <div class="design-workspace">
+          <div class="settings-card-box">
+            <h3>1. اختر نمط عرض الأصناف (10 أشكال مختلفة)</h3>
+            <div class="layout-choices-grid-10">
+              <label class="layout-radio-card">
+                <input type="radio" name="designLayout" value="luxury" checked />
+                <div>
+                  <strong>1. النمط الفاخر (Luxury Grid)</strong>
+                  <p>بطاقات عريضة بصورة كبيرة وتفاصيل واضحة</p>
+                </div>
+              </label>
+
+              <label class="layout-radio-card">
+                <input type="radio" name="designLayout" value="compact" />
+                <div>
+                  <strong>2. النمط السريع (Compact List)</strong>
+                  <p>صفوف مدمجة بصورة جانبية لسرعة التصفح</p>
+                </div>
+              </label>
+
+              <label class="layout-radio-card">
+                <input type="radio" name="designLayout" value="grid2" />
+                <div>
+                  <strong>3. شبكة الدليفري (2-Column Grid)</strong>
+                  <p>صنفين جنب بعض على الموبايل زي تطبيقات الطلب</p>
+                </div>
+              </label>
+
+              <label class="layout-radio-card">
+                <input type="radio" name="designLayout" value="overlay" />
+                <div>
+                  <strong>4. البطاقة السينمائية (Cinema Overlay)</strong>
+                  <p>الصورة خلفية كاملة للبطاقة والنص والسعر فوقها</p>
+                </div>
+              </label>
+
+              <label class="layout-radio-card">
+                <input type="radio" name="designLayout" value="editorial" />
+                <div>
+                  <strong>5. المجلة الراقية (Editorial Split)</strong>
+                  <p>صورة جانبية عريضة في النص والبيانات في النص التاني</p>
+                </div>
+              </label>
+
+              <label class="layout-radio-card">
+                <input type="radio" name="designLayout" value="poster" />
+                <div>
+                  <strong>6. البوستر المربع (Square Poster)</strong>
+                  <p>بطاقات مربعة تبرز صورة الطبق بشكل فني</p>
+                </div>
+              </label>
+
+              <label class="layout-radio-card">
+                <input type="radio" name="designLayout" value="classic" />
+                <div>
+                  <strong>7. الكلاسيكي الفاخر (Classic No-Image)</strong>
+                  <p>قائمة نصية راقية بدون صور للتركيز على الأصناف</p>
+                </div>
+              </label>
+
+              <label class="layout-radio-card">
+                <input type="radio" name="designLayout" value="pill" />
+                <div>
+                  <strong>8. الكبسولة العصرية (Modern Pill)</strong>
+                  <p>حواف دائرية كاملة ناعمة بلمسة عصرية</p>
+                </div>
+              </label>
+
+              <label class="layout-radio-card">
+                <input type="radio" name="designLayout" value="spotlight" />
+                <div>
+                  <strong>9. إطار الشيف (Chef Spotlight)</strong>
+                  <p>بطاقات بإطار بارز بلون البراند وظل مميز</p>
+                </div>
+              </label>
+
+              <label class="layout-radio-card">
+                <input type="radio" name="designLayout" value="minimal" />
+                <div>
+                  <strong>10. البسيط النظيف (Minimal Clean)</strong>
+                  <p>تصميم مسطح وهادي بدون أي زحمة بصرية</p>
+                </div>
+              </label>
+            </div>
+
+            <h3 style="margin-top:22px;">2. الألوان والخطوط والمظهر</h3>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>اللون الرئيسي للمنيو</label>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                  <input type="color" id="designPrimaryColor" value="#D49638" style="width:52px; height:40px; padding:2px; border-radius:8px; border:1px solid #cbd5e1; cursor:pointer;" />
+                  <button type="button" class="color-dot" style="background:#D49638;" onclick="setDesignColor('#D49638')" title="ذهبي ملكي"></button>
+                  <button type="button" class="color-dot" style="background:#dc2626;" onclick="setDesignColor('#dc2626')" title="أحمر مشويات"></button>
+                  <button type="button" class="color-dot" style="background:#ea580c;" onclick="setDesignColor('#ea580c')" title="برتقالي جمر"></button>
+                  <button type="button" class="color-dot" style="background:#16a34a;" onclick="setDesignColor('#16a34a')" title="أخضر طازج"></button>
+                  <button type="button" class="color-dot" style="background:#2563eb;" onclick="setDesignColor('#2563eb')" title="أزرق عصري"></button>
+                </div>
               </div>
 
-              <h3 style="margin-top:18px;">2. خيارات العرض في المنيو</h3>
-              <div class="form-grid" style="margin-top:8px;">
-                <label class="switch-label" style="justify-content:space-between; background:#f8fafc; padding:10px 12px; border-radius:10px;">
-                  <span>إظهار تفاصيل المرفقات أسفل كل وجبة</span>
-                  <input type="checkbox" id="designShowIncludes" checked />
-                </label>
-                <label class="switch-label" style="justify-content:space-between; background:#f8fafc; padding:10px 12px; border-radius:10px;">
-                  <span>إظهار شريط "الأكثر طلباً" أعلى المنيو</span>
-                  <input type="checkbox" id="designShowFeatured" checked />
-                </label>
+              <div class="form-group">
+                <label>وضع الإضاءة الافتراضي للعملاء</label>
+                <select id="designThemeMode">
+                  <option value="auto">تلقائي حسب جهاز العميل</option>
+                  <option value="dark">الوضع الليلي الداكن (Dark)</option>
+                  <option value="light">الوضع النهاري الفاتح (Light)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>نوع الخط العربي</label>
+                <select id="designFontFamily">
+                  <option value="Cairo">Cairo (عصري وواضح)</option>
+                  <option value="Tajawal">Tajawal (ناعم ومريح)</option>
+                  <option value="Almarai">Almarai (هندسي أنيق)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>استدارة حواف البطاقات</label>
+                <select id="designBorderRadius">
+                  <option value="20px">دائرية ناعمة (20px)</option>
+                  <option value="12px">متوسطة (12px)</option>
+                  <option value="4px">حادة كلاسيكية (4px)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>حجم الخط العام</label>
+                <select id="designFontScale">
+                  <option value="1">قياسي (100%)</option>
+                  <option value="1.08">كبير مريح للعين (108%)</option>
+                  <option value="0.94">مدمج (94%)</option>
+                </select>
               </div>
             </div>
 
-            <div class="form-card">
-              <h3>3. الألوان والمظهر والخطوط</h3>
-              <div class="form-grid">
-                <label>لون العلامة التجارية الرئيسي
-                  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px;">
-                    <input type="color" id="designPrimaryColor" value="#D49638" style="width:48px; height:40px; padding:2px; border-radius:8px; cursor:pointer;" />
-                    <button type="button" class="color-dot" style="background:#D49638;" onclick="setDesignColor('#D49638')" title="ذهبي ملكي"></button>
-                    <button type="button" class="color-dot" style="background:#d97706;" onclick="setDesignColor('#d97706')" title="كهرماني"></button>
-                    <button type="button" class="color-dot" style="background:#dc2626;" onclick="setDesignColor('#dc2626')" title="أحمر مشويات"></button>
-                    <button type="button" class="color-dot" style="background:#16a34a;" onclick="setDesignColor('#16a34a')" title="أخضر طازج"></button>
-                    <button type="button" class="color-dot" style="background:#0284c7;" onclick="setDesignColor('#0284c7')" title="أزرق بحري"></button>
-                    <button type="button" class="color-dot" style="background:#7c3aed;" onclick="setDesignColor('#7c3aed')" title="بنفسجي"></button>
+            <h3 style="margin-top:22px;">3. عناصر البطاقة والواجهة</h3>
+            <div class="design-switches-grid">
+              <label class="switch-row-card">
+                <input type="checkbox" id="designShowFeatured" checked />
+                <span>إظهار شريط "الأكثر طلباً" أعلى المنيو</span>
+              </label>
+              <label class="switch-row-card">
+                <input type="checkbox" id="designShowIncludes" checked />
+                <span>إظهار مكونات ومرفقات الوجبة</span>
+              </label>
+              <label class="switch-row-card">
+                <input type="checkbox" id="designShowBadges" checked />
+                <span>إظهار شارات التمييز (الأكثر طلباً / عرض خاص)</span>
+              </label>
+              <label class="switch-row-card">
+                <input type="checkbox" id="designShowSearch" checked />
+                <span>إظهار شريط البحث السريع للعملاء</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- معاينة حية لشكل البطاقة -->
+          <div class="design-preview-panel">
+            <div class="preview-panel-head">معاينة حية للنمط المختار</div>
+            <div id="liveDesignPreviewBox" class="live-preview-stage">
+              <div id="previewSampleCard" class="preview-sample-card layout-luxury">
+                <div class="preview-img-wrap">
+                  <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80" alt="صينية ميكس جريل" />
+                  <span id="previewBadge" class="preview-badge">الأكثر طلباً</span>
+                </div>
+                <div class="preview-body">
+                  <h4 id="previewTitle">صينية ميكس جريل ملكي (1 كيلو)</h4>
+                  <p id="previewDesc">كباب بتلو، كفتة حاتي، ريش ضاني، وشيش طاووق مشوي على الفحم.</p>
+                  <div id="previewIncludes" class="preview-includes">يُقدم مع: أرز بسمتي + سلطات + طحينة + عيش بلدي</div>
+                  <div class="preview-foot">
+                    <strong id="previewPrice">560 ج.م</strong>
+                    <button type="button" id="previewAddBtn">+ أضف</button>
                   </div>
-                </label>
-
-                <label>الوضع الافتراضي للمنيو
-                  <select id="designThemeMode">
-                    <option value="auto">تلقائي حسب جهاز العميل (Auto System)</option>
-                    <option value="dark">الوضع الداكن الفاخر (Dark)</option>
-                    <option value="light">الوضع النهاري المشرق (Light)</option>
-                  </select>
-                </label>
-
-                <label>استدارة حواف البطاقات
-                  <select id="designBorderRadius">
-                    <option value="24px">دائرية ناعمة (24px)</option>
-                    <option value="20px">متناسقة (20px)</option>
-                    <option value="12px">عصرية حادة (12px)</option>
-                    <option value="4px">مربعة كلاسيك (4px)</option>
-                  </select>
-                </label>
-
-                <label>حجم الخط العام
-                  <select id="designFontScale">
-                    <option value="0.95">صغير مدمج</option>
-                    <option value="1">متوسط قياسي (موصى به)</option>
-                    <option value="1.08">كبير واضح</option>
-                  </select>
-                </label>
+                </div>
               </div>
-              <button type="button" class="btn-primary-full" id="saveDesignBtn" style="margin-top:16px;">حفظ ونشر التصميم فوراً</button>
             </div>
           </div>
         </div>
+      </section>
 
-        <!-- 5. بيانات المطعم -->
-        <div class="tab-panel" id="tab-settings">
-          <div class="panel-header-flex">
-            <h2>بيانات المطعم والضريبة والتوصيل</h2>
+      <!-- 5. بيانات المطعم والأمان -->
+      <section class="tab-panel" id="tab-settings">
+        <div class="panel-header">
+          <div>
+            <h2>إعدادات المطعم والضريبة والأمان</h2>
+            <p>تعديل بيانات التواصل، رسوم التوصيل، الضريبة، وكلمة مرور لوحة الإدارة</p>
           </div>
-
-          <form id="settingsForm" class="cards-grid-2">
-            <div class="form-card">
-              <h3>الهوية وبيانات التواصل</h3>
-              <div class="form-grid">
-                <label>اسم المطعم
-                  <input type="text" id="setRestName" required />
-                </label>
-                <label>الشعار النصي (Tagline)
-                  <input type="text" id="setTagline" />
-                </label>
-                <label>الخط الساخن / الهاتف
-                  <input type="text" id="setHotline" />
-                </label>
-                <label>رقم الواتساب (بدون +)
-                  <input type="text" id="setWhatsapp" placeholder="201000000000" />
-                </label>
-                <label>مواعيد العمل
-                  <input type="text" id="setHours" />
-                </label>
-                <label>العنوان التفصيلي
-                  <input type="text" id="setAddress" />
-                </label>
-                <label>رابط خرائط جوجل
-                  <input type="url" id="setMapUrl" />
-                </label>
-                <label>نبذة عن المطعم
-                  <textarea id="setAbout" rows="2"></textarea>
-                </label>
-                <label>شعار المطعم (Logo)
-                  <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="text" id="setLogoUrl" value="./logo.svg" style="flex:1;" />
-                    <label class="upload-file-btn">رفع صورة
-                      <input type="file" id="uploadLogoFile" accept="image/*" hidden />
-                    </label>
-                  </div>
-                </label>
-                <label>صورة الغلاف (Cover)
-                  <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="text" id="setCoverUrl" style="flex:1;" />
-                    <label class="upload-file-btn">رفع صورة
-                      <input type="file" id="uploadCoverFile" accept="image/*" hidden />
-                    </label>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <div class="form-card">
-              <h3>الضريبة والتوصيل وأمان الكاشير</h3>
-              <div class="form-grid">
-                <label class="switch-label" style="justify-content:space-between; background:#f8fafc; padding:10px 12px; border-radius:10px;">
-                  <span>تفعيل ضريبة القيمة المضافة (VAT)</span>
-                  <input type="checkbox" id="setVatEnabled" checked />
-                </label>
-                <label>نسبة الضريبة (%)
-                  <input type="number" id="setVatRate" value="14" min="0" max="50" />
-                </label>
-                <label>رسوم التوصيل (ج.م)
-                  <input type="number" id="setDeliveryFee" value="25" min="0" />
-                </label>
-                <label>متوسط وقت تحضير الطلب (بالدقائق)
-                  <input type="number" id="setPrepTime" value="20" min="5" max="120" />
-                </label>
-                <label>كود الخصم الترويجي
-                  <input type="text" id="setPromoCode" placeholder="WELCOME20" />
-                </label>
-                <label>قيمة الخصم (ج.م)
-                  <input type="number" id="setPromoDiscount" value="30" min="0" />
-                </label>
-                <label>الرقم السري لدخول لوحة الإدارة (PIN)
-                  <input type="text" id="setAdminPin" maxlength="6" value="1234" />
-                </label>
-              </div>
-              <button type="submit" class="btn-primary-full" style="margin-top:16px;">حفظ جميع الإعدادات</button>
-            </div>
-          </form>
         </div>
 
-        <!-- 6. التقارير المالية -->
-        <div class="tab-panel" id="tab-reports">
-          <div class="panel-header-flex">
+        <form id="settingsForm" class="settings-card-box">
+          <h3>البيانات الأساسية والتواصل</h3>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>اسم المطعم</label>
+              <input type="text" id="setRestName" required />
+            </div>
+            <div class="form-group">
+              <label>الشعار النصي (Tagline)</label>
+              <input type="text" id="setTagline" />
+            </div>
+            <div class="form-group">
+              <label>الخط الساخن / رقم الهاتف</label>
+              <input type="text" id="setHotline" />
+            </div>
+            <div class="form-group">
+              <label>رقم الواتساب</label>
+              <input type="text" id="setWhatsapp" />
+            </div>
+            <div class="form-group">
+              <label>مواعيد العمل</label>
+              <input type="text" id="setHours" />
+            </div>
+            <div class="form-group">
+              <label>العنوان التفصيلي</label>
+              <input type="text" id="setAddress" />
+            </div>
+            <div class="form-group">
+              <label>رابط خرائط جوجل (Google Maps URL)</label>
+              <input type="url" id="setMapUrl" />
+            </div>
+            <div class="form-group">
+              <label>نبذة عن المطعم</label>
+              <input type="text" id="setAbout" />
+            </div>
+          </div>
+
+          <h3 style="margin-top:20px;">الهوية البصرية (اللوجو والغلاف)</h3>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>رابط اللوجو أو رفع صورة</label>
+              <input type="text" id="setLogoUrl" />
+              <input type="file" id="uploadLogoFile" accept="image/*" style="margin-top:6px;" />
+            </div>
+            <div class="form-group">
+              <label>رابط صورة الغلاف (Cover) أو رفع صورة</label>
+              <input type="text" id="setCoverUrl" />
+              <input type="file" id="uploadCoverFile" accept="image/*" style="margin-top:6px;" />
+            </div>
+          </div>
+
+          <h3 style="margin-top:20px;">الضريبة والتوصيل وأكواد الخصم</h3>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="setVatEnabled" checked />
+                <span>تفعيل ضريبة القيمة المضافة (VAT)</span>
+              </label>
+              <input type="number" id="setVatRate" min="0" max="50" value="14" placeholder="نسبة الضريبة %" />
+            </div>
+            <div class="form-group">
+              <label>رسوم التوصيل (دليفري بالجنيه)</label>
+              <input type="number" id="setDeliveryFee" min="0" value="25" />
+            </div>
+            <div class="form-group">
+              <label>متوسط وقت تحضير الطلب (بالدقائق)</label>
+              <input type="number" id="setPrepTime" min="5" max="120" value="20" />
+            </div>
+            <div class="form-group">
+              <label>كود الخصم الترويجي (Promo Code)</label>
+              <input type="text" id="setPromoCode" placeholder="مثال: QASR30" />
+            </div>
+            <div class="form-group">
+              <label>قيمة الخصم (بالجنيه)</label>
+              <input type="number" id="setPromoDiscount" min="0" value="30" />
+            </div>
+          </div>
+
+          <h3 style="margin-top:20px; color:#dc2626;">أمان وحماية لوحة الإدارة</h3>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>رقم هاتف تسجيل الدخول للوحة الإدارة</label>
+              <input type="tel" id="setAdminUsername" maxlength="11" inputmode="numeric" />
+            </div>
+            <div class="form-group">
+              <label>تغيير كلمة المرور</label>
+              <input type="password" id="setAdminPin" maxlength="20" placeholder="اتركه فارغاً للإبقاء على كلمة المرور الحالية" />
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary-full" style="margin-top:18px;">حفظ كافة الإعدادات</button>
+        </form>
+      </section>
+
+      <!-- 6. التقارير المالية والمبيعات -->
+      <section class="tab-panel" id="tab-reports">
+        <div class="panel-header">
+          <div>
             <h2>التقارير المالية والمبيعات</h2>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button type="button" class="filter-chip active" data-period="today">اليوم</button>
-              <button type="button" class="filter-chip" data-period="week">آخر 7 أيام</button>
-              <button type="button" class="filter-chip" data-period="month">هذا الشهر</button>
-              <button type="button" class="filter-chip" data-period="all">الإجمالي الكلي</button>
-              <button type="button" class="btn-primary-sm" id="exportExcelBtn">تصدير Excel (.xlsx)</button>
-              <button type="button" class="btn-outline" id="exportReportPdfBtn">تصدير PDF</button>
-            </div>
+            <p>ملخص الإيرادات والطلبات وتصدير تقارير Excel و PDF</p>
           </div>
-
-          <div class="kpi-grid">
-            <div class="kpi-card"><span>إجمالي المبيعات</span><strong id="kpiRevenue">0 ج.م</strong></div>
-            <div class="kpi-card"><span>عدد الفواتير</span><strong id="kpiOrdersCount">0</strong></div>
-            <div class="kpi-card"><span>متوسط الفاتورة</span><strong id="kpiAvgOrder">0 ج.م</strong></div>
-            <div class="kpi-card"><span>الأكثر مبيعاً</span><strong id="kpiTopItem">—</strong></div>
-          </div>
-
-          <div class="table-responsive" style="margin-top:16px;">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>رقم الفاتورة</th>
-                  <th>النوع</th>
-                  <th>العميل</th>
-                  <th>الأصناف</th>
-                  <th>الإجمالي</th>
-                  <th>الحالة</th>
-                  <th>التوقيت</th>
-                </tr>
-              </thead>
-              <tbody id="reportsTbody"></tbody>
-            </table>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="filter-chip active" data-period="today">اليوم</button>
+            <button type="button" class="filter-chip" data-period="week">آخر 7 أيام</button>
+            <button type="button" class="filter-chip" data-period="month">هذا الشهر</button>
+            <button type="button" class="filter-chip" data-period="all">الكل</button>
           </div>
         </div>
 
-      </main>
-    </div>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <span>إجمالي الإيرادات</span>
+            <strong id="kpiRevenue">0 ج.م</strong>
+          </div>
+          <div class="kpi-card">
+            <span>عدد الطلبات</span>
+            <strong id="kpiOrdersCount">0</strong>
+          </div>
+          <div class="kpi-card">
+            <span>متوسط قيمة الفاتورة</span>
+            <strong id="kpiAvgOrder">0 ج.م</strong>
+          </div>
+          <div class="kpi-card">
+            <span>الأكثر مبيعاً</span>
+            <strong id="kpiTopItem" style="font-size:1.05rem;">—</strong>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+          <button type="button" id="exportExcelBtn" class="btn-act green">تصدير تقرير Excel (.xlsx)</button>
+          <button type="button" id="exportReportPdfBtn" class="btn-act blue">طباعة / حفظ تقرير PDF</button>
+        </div>
+
+        <div class="table-responsive-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>رقم الفاتورة</th>
+                <th>النوع</th>
+                <th>العميل</th>
+                <th>الأصناف</th>
+                <th>الإجمالي</th>
+                <th>الحالة</th>
+                <th>التوقيت</th>
+              </tr>
+            </thead>
+            <tbody id="reportsTbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
   </div>
 
   <!-- نافذة إضافة / تعديل صنف -->
-  <div class="admin-modal" id="itemFormModal">
-    <div class="admin-modal-card">
+  <div class="modal-backdrop" id="itemFormModal">
+    <div class="modal-box">
       <div class="modal-head">
         <h3 id="itemModalTitle">إضافة صنف جديد</h3>
-        <button type="button" id="closeItemModalBtn">✕</button>
+        <button type="button" id="closeItemModalBtn" class="btn-close-modal">✕</button>
       </div>
-      <form id="menuItemForm" class="form-grid">
+      <form id="menuItemForm">
         <input type="hidden" id="editItemId" />
-        <label>اسم الصنف *
+        <div class="form-group">
+          <label>اسم الصنف *</label>
           <input type="text" id="itemNameInput" required />
-        </label>
-        <div class="form-row-2">
-          <label>القسم *
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>القسم *</label>
             <input type="text" id="itemCatInput" list="catSuggestions" required />
             <datalist id="catSuggestions">
-              <option value="المشويات">
-              <option value="الطواجن والمصري">
-              <option value="الشاورما والفتة">
-              <option value="الحواوشي والفطير">
-              <option value="الأسماك والبحريات">
-              <option value="البرجر والبيتزا">
-              <option value="المكرونات">
-              <option value="المقبلات والسلطات">
-              <option value="الحلويات والمشروبات">
+              <option value="المشويات بالكيلو"></option>
+              <option value="الوجبات الفردية"></option>
+              <option value="الطواجن والفتة"></option>
+              <option value="السندوتشات والحواوشي"></option>
+              <option value="المقبلات والسلطات"></option>
+              <option value="المشروبات والحلويات"></option>
             </datalist>
-          </label>
-          <label>السعر (ج.م) *
-            <input type="number" id="itemPriceInput" min="1" required />
-          </label>
-        </div>
-        <label>شارة تمييز (اختياري)
-          <input type="text" id="itemBadgeInput" placeholder="الأكثر طلباً، جديد، عرض خاص" />
-        </label>
-        <label>وصف الصنف
-          <textarea id="itemDescInput" rows="2"></textarea>
-        </label>
-        <label>المرفقات مع الوجبة
-          <input type="text" id="itemIncludesInput" placeholder="المرفقات: أرز بسمتي + طحينة + سلطة + عيش بلدي" />
-        </label>
-        <label>صورة الصنف (رابط مباشر أو رفع من الجهاز)
-          <div style="display:flex; gap:8px; align-items:center;">
-            <input type="text" id="itemImgInput" placeholder="https://..." style="flex:1;" />
-            <label class="upload-file-btn">من الجهاز
-              <input type="file" id="uploadItemImgFile" accept="image/*" hidden />
-            </label>
           </div>
-          <img id="itemImgPreview" src="" style="display:none; width:100%; height:130px; object-fit:cover; border-radius:10px; margin-top:8px;" />
-        </label>
-        <label class="switch-label">
+          <div class="form-group">
+            <label>السعر (ج.م) *</label>
+            <input type="number" id="itemPriceInput" min="1" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>شارة مميزة (اختياري)</label>
+          <input type="text" id="itemBadgeInput" />
+        </div>
+        <div class="form-group">
+          <label>وصف الصنف</label>
+          <input type="text" id="itemDescInput" />
+        </div>
+        <div class="form-group">
+          <label>مرفقات الوجبة</label>
+          <input type="text" id="itemIncludesInput" />
+        </div>
+        <div class="form-group">
+          <label>رابط الصورة أو رفع صورة من الجهاز</label>
+          <input type="text" id="itemImgInput" />
+          <input type="file" id="uploadItemImgFile" accept="image/*" style="margin-top:6px;" />
+          <img id="itemImgPreview" src="" alt="Preview" style="display:none; width:90px; height:90px; object-fit:cover; border-radius:10px; margin-top:8px;" />
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:800; margin:10px 0;">
           <input type="checkbox" id="itemAvailInput" checked />
-          <span>الصنف متاح للطلب حالياً</span>
+          <span>الصنف متاح حالياً للطلب</span>
         </label>
         <button type="submit" class="btn-primary-full">حفظ الصنف</button>
       </form>
     </div>
   </div>
 
-  <!-- نافذة حساب الترابيزة المفتوح -->
-  <div class="admin-modal" id="tableTabModal">
-    <div class="admin-modal-card">
+  <!-- نافذة حساب الترابيزة -->
+  <div class="modal-backdrop" id="tableTabModal">
+    <div class="modal-box modal-box-wide">
       <div class="modal-head">
-        <h3 id="tableTabTitle">حساب ترابيزة رقم 1</h3>
-        <button type="button" id="closeTableTabBtn">✕</button>
+        <h3 id="tableTabTitle">حساب ترابيزة</h3>
+        <button type="button" id="closeTableTabBtn" class="btn-close-modal">✕</button>
       </div>
       <div id="tableTabContent"></div>
     </div>
   </div>
 
-  <div id="adminToast" class="admin-toast">تم الحفظ</div>
+  <div class="admin-toast" id="adminToast"></div>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-  <script src="../firebase-config.js?v=35"></script>
-  <script src="admin.js?v=35"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <script src="../firebase-config.js"></script>
+  <script src="../menu-data.js"></script>
+  <script src="admin.js"></script>
 </body>
 </html>
