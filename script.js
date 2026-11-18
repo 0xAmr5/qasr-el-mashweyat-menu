@@ -1,6 +1,6 @@
-// script.js
-let restaurantInfo = { ...DEFAULT_RESTAURANT_INFO };
-let menuItems = [...DEFAULT_MENU_ITEMS];
+// script.js (Fast Cached & Optimized)
+let restaurantInfo = JSON.parse(localStorage.getItem("cached_rest_info") || "null") || { ...DEFAULT_RESTAURANT_INFO };
+let menuItems = JSON.parse(localStorage.getItem("cached_menu_items") || "null") || [...DEFAULT_MENU_ITEMS];
 let cart = JSON.parse(localStorage.getItem("rest_cart") || "[]");
 let selectedCategory = "الكل";
 let searchQuery = "";
@@ -9,11 +9,15 @@ let countdownInterval = null;
 let currentTrackedOrder = null;
 let activeTableOrder = null;
 
-const FALLBACK_IMG = "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80";
-const DEFAULT_COVER_PHOTO = "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1400&q=85";
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=400&q=70";
+const DEFAULT_COVER_PHOTO = "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=900&q=75";
 
+// تحسين سرعة روابط الصور تلقائياً
 function resolveSafeImg(img) {
   if (!img) return FALLBACK_IMG;
+  if (img.includes("images.unsplash.com")) {
+    return img.replace(/w=\d+/, "w=400").replace(/q=\d+/, "q=70");
+  }
   if (img.startsWith("http") || img.startsWith("data:") || img.startsWith("./")) return img;
   return `./${img}`;
 }
@@ -21,6 +25,9 @@ function resolveSafeImg(img) {
 function resolveSafeCover(url) {
   if (!url || (!url.startsWith("http") && !url.startsWith("data:"))) {
     return DEFAULT_COVER_PHOTO;
+  }
+  if (url.includes("images.unsplash.com")) {
+    return url.replace(/w=\d+/, "w=900").replace(/q=\d+/, "q=75");
   }
   return url;
 }
@@ -38,7 +45,7 @@ if (isTableMode && tableBannerEl && tableLabelEl) {
   tableLabelEl.textContent = `ترابيزة رقم ${currentTableNumber}`;
 }
 
-// تقييد خانة رقم الموبايل بـ 11 رقم فقط ومنع الحروف تماماً
+// تقييد خانة رقم الموبايل بـ 11 رقم فقط
 const custPhoneInput = document.getElementById("custPhone");
 if (custPhoneInput) {
   custPhoneInput.setAttribute("maxlength", "11");
@@ -125,7 +132,7 @@ window.printThermalReceipt = (ord, info) => {
   win.document.close();
 };
 
-// نظام الثيم التلقائي حسب الجهاز (Dark / Light)
+// نظام الثيم التلقائي حسب الجهاز
 const htmlEl = document.documentElement;
 const themeToggleBtn = document.getElementById("themeToggleBtn");
 const themeIcon = document.getElementById("themeIcon");
@@ -332,7 +339,7 @@ function renderFeatured() {
     .map(
       (item) => `
       <div class="featured-card-mini" onclick="openItemDetail(${item.id})">
-        <img src="${resolveSafeImg(item.img)}" alt="${item.name}" loading="lazy" onerror="this.onerror=null; this.src='${FALLBACK_IMG}';" />
+        <img src="${resolveSafeImg(item.img)}" alt="${item.name}" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='${FALLBACK_IMG}';" />
         <div class="featured-mini-body">
           <h4>${item.name}</h4>
           <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -406,7 +413,7 @@ function renderMenu() {
           <div class="card-media-box" onclick="openItemDetail(${item.id})">
             ${item.badge ? `<span class="item-badge">${item.badge}</span>` : ""}
             ${!isAvail ? `<div class="sold-out-overlay">نفدت الكمية</div>` : ""}
-            <img src="${resolveSafeImg(item.img)}" alt="${item.name}" loading="lazy" onerror="this.onerror=null; this.src='${FALLBACK_IMG}';" />
+            <img src="${resolveSafeImg(item.img)}" alt="${item.name}" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='${FALLBACK_IMG}';" />
           </div>
           <div class="card-content-box">
             <h4 class="card-title-text" onclick="openItemDetail(${item.id})">${item.name}</h4>
@@ -638,7 +645,6 @@ if (sendOrderBtn) {
     const now = Date.now();
     const newCartItems = cart.map((c) => ({ ...c, total: c.price * c.qty }));
 
-    // دمج الأصناف الجديدة على الفاتورة المفتوحة لنفس الترابيزة
     if (isTableMode && activeTableOrder && activeTableOrder.status !== "completed") {
       const mergedItems = [...(activeTableOrder.items || [])];
       newCartItems.forEach((newIt) => {
@@ -693,7 +699,6 @@ if (sendOrderBtn) {
       return;
     }
 
-    // إنشاء طلب جديد
     const orderId = `ord_${now}`;
     const orderNumber = Math.floor(1000 + Math.random() * 9000);
     const fullAddress = landmark ? `${address} (علامة مميزة: ${landmark})` : address;
@@ -746,7 +751,7 @@ if (sendOrderBtn) {
   });
 }
 
-// متابعة الفاتورة المفتوحة للترابيزة (?table=رقم)
+// متابعة الفاتورة المفتوحة للترابيزة
 const trackerModal = document.getElementById("orderTrackerModal");
 const trackMyOrderBtn = document.getElementById("trackMyOrderBtn");
 
@@ -850,19 +855,26 @@ const closeInfoBtn = document.getElementById("closeInfoBtn");
 if (openInfoBtn) openInfoBtn.addEventListener("click", () => infoModal.classList.add("active"));
 if (closeInfoBtn) closeInfoBtn.addEventListener("click", () => infoModal.classList.remove("active"));
 
-// التشغيل الفوري
+// العرض الفوري من الكاش المحلي قبل انتظار الشبكة
 renderRestaurantInfo();
 renderCategories();
 renderMenu();
 
+// تحديث البيانات في الخلفية وحفظها في الكاش
 db.ref("restaurantInfo").on("value", (snap) => {
-  if (snap.exists()) restaurantInfo = { ...DEFAULT_RESTAURANT_INFO, ...snap.val() };
-  renderRestaurantInfo();
+  if (snap.exists()) {
+    restaurantInfo = { ...DEFAULT_RESTAURANT_INFO, ...snap.val() };
+    try { localStorage.setItem("cached_rest_info", JSON.stringify(restaurantInfo)); } catch (e) {}
+    renderRestaurantInfo();
+  }
 });
 
 db.ref("menuItems").on("value", (snap) => {
   const data = snap.val();
-  menuItems = data ? (Array.isArray(data) ? data : Object.values(data)).filter(Boolean) : [...DEFAULT_MENU_ITEMS];
-  renderCategories();
-  renderMenu();
+  if (data) {
+    menuItems = (Array.isArray(data) ? data : Object.values(data)).filter(Boolean);
+    try { localStorage.setItem("cached_menu_items", JSON.stringify(menuItems)); } catch (e) {}
+    renderCategories();
+    renderMenu();
+  }
 });
